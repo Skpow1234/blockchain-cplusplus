@@ -92,7 +92,7 @@ struct JsonParser {
 
   [[nodiscard]] Result<std::uint64_t> parse_uint() {
     skip_ws();
-    std::size_t start = pos;
+    const std::size_t start = pos;
     if (eof()) {
       return make_error(ErrorCode::kInvalidConfig, "expected JSON number");
     }
@@ -165,7 +165,9 @@ struct JsonParser {
     }
     skip_ws();
     if (auto ch = peek(); ch && *ch == '}') {
-      (void)consume();
+      if (auto close = expect('}'); !close) {
+        return std::unexpected(close.error());
+      }
       return {};
     }
 
@@ -202,7 +204,7 @@ struct JsonParser {
 };
 
 [[nodiscard]] bool is_ignored_key(std::string_view key) {
-  return key.size() >= 1 && key[0] == '_';
+  return !key.empty() && key[0] == '_';
 }
 
 [[nodiscard]] Result<void> apply_string_field(NodeConfig& config, std::string_view key,
