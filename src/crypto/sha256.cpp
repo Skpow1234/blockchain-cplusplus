@@ -33,7 +33,7 @@ constexpr std::array<std::uint32_t, 64> kRoundConstants = {
 class Sha256 {
  public:
   void update(std::span<const std::byte> data) noexcept {
-    for (std::byte byte : data) {
+    for (const std::byte byte : data) {
       buffer_[buffer_len_++] = static_cast<std::uint8_t>(byte);
       if (buffer_len_ == kBlockSize) {
         process_block(buffer_.data());
@@ -154,7 +154,7 @@ std::string to_hex(const Hash256& hash) {
                                                    '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
   std::string out;
   out.reserve(hash.size() * 2);
-  for (std::byte byte : hash) {
+  for (const std::byte byte : hash) {
     const auto value = static_cast<std::uint8_t>(byte);
     out.push_back(kDigits[value >> 4U]);
     out.push_back(kDigits[value & 0x0fU]);

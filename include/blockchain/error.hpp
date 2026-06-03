@@ -12,7 +12,7 @@ namespace blockchain {
 // Stable, inspectable error categories shared across the codebase. These are
 // intended for tests to assert on, so values must remain meaningful and the
 // set must only grow in an additive way.
-enum class ErrorCode : std::uint16_t {
+enum class ErrorCode : std::uint8_t {
   kParseError = 1,
   kInvalidMessage,
   kInvalidTransaction,

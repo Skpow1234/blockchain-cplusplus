@@ -1,3 +1,4 @@
+#include <exception>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -37,11 +38,19 @@ int run(const std::vector<std::string>& args, std::string_view program) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  const std::string program = argc > 0 ? argv[0] : "blockchain_node";
-  std::vector<std::string> args;
-  args.reserve(static_cast<std::size_t>(argc > 0 ? argc - 1 : 0));
-  for (int i = 1; i < argc; ++i) {
-    args.emplace_back(argv[i]);
+  try {
+    const std::string program = argc > 0 ? argv[0] : "blockchain_node";
+    std::vector<std::string> args;
+    args.reserve(static_cast<std::size_t>(argc > 0 ? argc - 1 : 0));
+    for (int i = 1; i < argc; ++i) {
+      args.emplace_back(argv[i]);
+    }
+    return run(args, program);
+  } catch (const std::exception& ex) {
+    std::cerr << "fatal: " << ex.what() << "\n";
+    return 1;
+  } catch (...) {
+    std::cerr << "fatal: unknown error\n";
+    return 1;
   }
-  return run(args, program);
 }
