@@ -77,12 +77,19 @@ int run(const std::vector<std::string>& args, std::string_view program) {
             << "  node id:        " << config->node_id << "\n"
             << "  data dir:       " << config->data_dir << "\n"
             << "  log level:      " << blockchain::node::to_string(config->log_level) << "\n"
+            << "  restored:       " << (summary->restored_from_disk ? "yes" : "no") << "\n"
             << "  genesis time:   " << config->genesis_timestamp << "\n"
             << "  genesis hash:   " << blockchain::crypto::to_hex(summary->genesis_hash) << "\n"
             << "  blocks mined:   " << summary->blocks_mined << "\n"
             << "  chain height:   " << summary->height << "\n"
             << "  tip hash:       " << blockchain::crypto::to_hex(summary->tip_hash) << "\n"
-            << "  utxo set size:  " << summary->utxo_count << "\n";
+            << "  utxo set size:  " << summary->utxo_count << "\n"
+            << "  txs admitted:   " << summary->txs_admitted << "\n"
+            << "  txs included:   " << summary->txs_included << "\n"
+            << "  total fees:     " << summary->total_fees << "\n";
+  if (config->persist) {
+    std::cout << "  ledger saved:   " << config->data_dir << "/ledger.bin\n";
+  }
   return 0;
 }
 
