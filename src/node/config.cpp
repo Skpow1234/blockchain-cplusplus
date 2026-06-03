@@ -74,6 +74,27 @@ std::string_view to_string(LogLevel level) {
   return "info";
 }
 
+Result<NetworkMode> parse_network_mode(std::string_view text) {
+  if (text == "ping") {
+    return NetworkMode::kPing;
+  }
+  if (text == "relay") {
+    return NetworkMode::kRelay;
+  }
+  return make_error(ErrorCode::kInvalidConfig,
+                    std::string("unknown network mode: '") + std::string(text) + "'");
+}
+
+std::string_view to_string(NetworkMode mode) {
+  switch (mode) {
+    case NetworkMode::kPing:
+      return "ping";
+    case NetworkMode::kRelay:
+      return "relay";
+  }
+  return "ping";
+}
+
 Result<void> NodeConfig::validate() const {
   if (node_id.empty()) {
     return make_error(ErrorCode::kInvalidConfig, "node_id must not be empty");
@@ -204,6 +225,16 @@ Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
         return std::unexpected(parsed.error());
       }
       config.listen_port = static_cast<std::uint16_t>(*parsed);
+    } else if (arg == "--network-mode") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto mode = parse_network_mode(*value);
+      if (!mode) {
+        return std::unexpected(mode.error());
+      }
+      config.network_mode = *mode;
     } else if (arg == "--peer") {
       auto value = require_value(arg);
       if (!value) {
@@ -241,9 +272,10 @@ std::string usage(std::string_view program) {
   out += "  --block-subsidy <amount>   Coinbase subsidy per block (default: protocol)\n";
   out += "  --coinbase-maturity <n>    Blocks before a coinbase may be spent (default: protocol)\n";
   out += "  --coinbase-recipient <hex> 64-char hex payout address (default: zero)\n";
-  out += "  --listen-host <ipv4>        Bind address for ping server (default: 127.0.0.1)\n";
-  out += "  --listen-port <port>        Run ping server on this port (accept one peer)\n";
-  out += "  --peer <host:port>         Connect as ping client to host:port\n";
+  out += "  --network-mode <mode>      ping|relay when using TCP (default: ping)\n";
+  out += "  --listen-host <ipv4>        Bind address for TCP server (default: 127.0.0.1)\n";
+  out += "  --listen-port <port>        Run TCP server on this port (accept one peer)\n";
+  out += "  --peer <host:port>         Connect as TCP client to host:port\n";
   out += "  -h, --help                 Show this help and exit\n";
   return out;
 }

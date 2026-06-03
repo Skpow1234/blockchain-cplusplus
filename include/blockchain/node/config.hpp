@@ -12,8 +12,17 @@ namespace blockchain::node {
 // Logging verbosity. Ordered from least to most verbose.
 enum class LogLevel : std::uint8_t { kError = 0, kWarn, kInfo, kDebug, kTrace };
 
+// Stage-2 TCP behavior when --listen-port or --peer is set.
+enum class NetworkMode : std::uint8_t {
+  kPing = 0,   // handshake + single ping/pong (default)
+  kRelay,      // handshake + block/tx relay (request/response sync)
+};
+
 [[nodiscard]] Result<LogLevel> parse_log_level(std::string_view text);
 [[nodiscard]] std::string_view to_string(LogLevel level);
+
+[[nodiscard]] Result<NetworkMode> parse_network_mode(std::string_view text);
+[[nodiscard]] std::string_view to_string(NetworkMode mode);
 
 // Runtime configuration for a node/simulator instance. Nothing here is
 // hardcoded into the binary: every field is supplied via CLI flags (and later
@@ -38,6 +47,7 @@ struct NodeConfig {
   std::string coinbase_recipient_hex;
 
   // Stage-2 local TCP networking (no hardcoded ports or peers).
+  NetworkMode network_mode = NetworkMode::kPing;
   std::string listen_host = "127.0.0.1";
   std::uint16_t listen_port = 0;
   std::string peer_host;

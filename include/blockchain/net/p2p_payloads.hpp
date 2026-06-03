@@ -85,6 +85,57 @@ using PongPayload = PingPayload;
 [[nodiscard]] Result<P2pMessage> make_pong_message(const PongPayload& payload);
 [[nodiscard]] Result<PongPayload> parse_pong_message(const P2pMessage& message);
 
+// ---------------------------------------------------------------------------
+// Transaction relay — announce carries the full canonical transaction encoding.
+// Layout: tx_bytes (u32 len + bytes, max kMaxTransactionSizeBytes).
+// ---------------------------------------------------------------------------
+struct TxAnnouncePayload {
+  std::vector<std::byte> tx_bytes;
+};
+
+[[nodiscard]] Result<std::vector<std::byte>> serialize_tx_announce(const TxAnnouncePayload& payload);
+[[nodiscard]] Result<TxAnnouncePayload> deserialize_tx_announce(std::span<const std::byte> bytes);
+
+[[nodiscard]] Result<P2pMessage> make_tx_announce_message(const TxAnnouncePayload& payload);
+[[nodiscard]] Result<TxAnnouncePayload> parse_tx_announce_message(const P2pMessage& message);
+
+// ---------------------------------------------------------------------------
+// Block relay — announce or response carries a canonical block encoding.
+// Layout: block_bytes (u32 len + bytes, max kMaxBlockSizeBytes).
+// ---------------------------------------------------------------------------
+struct BlockAnnouncePayload {
+  std::vector<std::byte> block_bytes;
+};
+
+[[nodiscard]] Result<std::vector<std::byte>> serialize_block_announce(
+    const BlockAnnouncePayload& payload);
+[[nodiscard]] Result<BlockAnnouncePayload> deserialize_block_announce(
+    std::span<const std::byte> bytes);
+
+[[nodiscard]] Result<P2pMessage> make_block_announce_message(const BlockAnnouncePayload& payload);
+[[nodiscard]] Result<BlockAnnouncePayload> parse_block_announce_message(const P2pMessage& message);
+
+// Block request/response pair for pulling a block by height.
+struct BlockRequestPayload {
+  std::uint32_t height = 0;
+};
+
+[[nodiscard]] std::vector<std::byte> serialize_block_request(const BlockRequestPayload& payload);
+[[nodiscard]] Result<BlockRequestPayload> deserialize_block_request(std::span<const std::byte> bytes);
+
+[[nodiscard]] Result<P2pMessage> make_block_request_message(const BlockRequestPayload& payload);
+[[nodiscard]] Result<BlockRequestPayload> parse_block_request_message(const P2pMessage& message);
+
+using BlockResponsePayload = BlockAnnouncePayload;
+
+[[nodiscard]] Result<std::vector<std::byte>> serialize_block_response(
+    const BlockResponsePayload& payload);
+[[nodiscard]] Result<BlockResponsePayload> deserialize_block_response(
+    std::span<const std::byte> bytes);
+
+[[nodiscard]] Result<P2pMessage> make_block_response_message(const BlockResponsePayload& payload);
+[[nodiscard]] Result<BlockResponsePayload> parse_block_response_message(const P2pMessage& message);
+
 }  // namespace blockchain::net
 
 #endif  // BLOCKCHAIN_NET_P2P_PAYLOADS_HPP

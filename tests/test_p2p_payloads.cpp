@@ -5,6 +5,8 @@
 #include "blockchain/error.hpp"
 #include "blockchain/net/p2p_message.hpp"
 #include "blockchain/net/p2p_payloads.hpp"
+#include "blockchain/node/genesis.hpp"
+#include "blockchain/node/config.hpp"
 #include "blockchain/protocol/constants.hpp"
 #include "testing.hpp"
 
@@ -27,7 +29,18 @@ using blockchain::net::parse_reject_message;
 using blockchain::net::PingPayload;
 using blockchain::net::RejectCode;
 using blockchain::net::RejectPayload;
+using blockchain::net::BlockAnnouncePayload;
+using blockchain::net::BlockRequestPayload;
+using blockchain::net::TxAnnouncePayload;
+using blockchain::net::make_block_announce_message;
+using blockchain::net::make_block_request_message;
+using blockchain::net::make_tx_announce_message;
+using blockchain::net::parse_block_announce_message;
+using blockchain::net::parse_block_request_message;
+using blockchain::net::parse_tx_announce_message;
 using blockchain::net::serialize_handshake;
+using blockchain::node::NodeConfig;
+using blockchain::node::build_genesis_block;
 using blockchain::protocol::kProtocolVersion;
 
 namespace {
@@ -153,4 +166,41 @@ TEST_CASE("parse_handshake rejects a ping envelope") {
   auto ping_msg = make_ping_message(PingPayload{.nonce = 99});
   CHECK(ping_msg.has_value());
   CHECK(!parse_handshake_message(*ping_msg).has_value());
+}
+
+TEST_CASE("block request payload round-trips on the wire") {
+  auto encoded = make_block_request_message(BlockRequestPayload{.height = 7});
+  CHECK(encoded.has_value());
+
+  auto envelope = P2pMessage::deserialize(encoded->to_bytes());
+  CHECK(envelope.has_value());
+  CHECK(envelope->type == P2pMessageType::kBlockRequest);
+
+  auto decoded = parse_block_request_message(*envelope);
+  CHECK(decoded.has_value());
+  CHECK_EQ(decoded->height, static_cast<std::uint32_t>(7));
+}
+
+TEST_CASE("block announce carries canonical genesis bytes") {
+  NodeConfig config;
+  config.genesis_timestamp = 42;
+  const auto genesis = build_genesis_block(config);
+
+  BlockAnnouncePayload payload;
+  payload.block_bytes = genesis.to_bytes();
+
+  auto encoded = make_block_announce_message(payload);
+  CHECK(encoded.has_value());
+
+  auto envelope = P2pMessage::deserialize(encoded->to_bytes());
+  CHECK(envelope.has_value());
+
+  auto decoded = parse_block_announce_message(*envelope);
+  CHECK(decoded.has_value());
+  CHECK_EQ(decoded->block_bytes.size(), payload.block_bytes.size());
+}
+
+TEST_CASE("tx announce rejects empty transaction bytes on serialize") {
+  TxAnnouncePayload payload;
+  CHECK(!blockchain::net::serialize_tx_announce(payload).has_value());
 }

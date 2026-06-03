@@ -16,6 +16,7 @@ add_library(blockchain_core
   node/config.cpp
   node/genesis.cpp
   node/network.cpp
+  node/peer_state.cpp
   node/simulator.cpp)
 
 target_include_directories(blockchain_core

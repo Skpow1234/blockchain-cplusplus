@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "blockchain/protocol/constants.hpp"
 #include "blockchain/serialization/byte_io.hpp"
 
 namespace blockchain::net {
@@ -51,6 +52,29 @@ namespace {
     return std::unexpected(raw.error());
   }
   return std::string(reinterpret_cast<const char*>(raw->data()), raw->size());
+}
+
+[[nodiscard]] Result<void> put_blob(serialization::ByteWriter& writer, std::span<const std::byte> bytes,
+                                    std::uint32_t max_len, std::string_view label) {
+  if (bytes.size() > max_len) {
+    return make_error(ErrorCode::kInvalidMessage,
+                      std::string(label) + " exceeds maximum encoded length");
+  }
+  writer.put_var_bytes(bytes);
+  return {};
+}
+
+[[nodiscard]] Result<std::vector<std::byte>> get_blob(serialization::ByteReader& reader,
+                                                       std::uint32_t max_len,
+                                                       std::string_view label) {
+  auto raw = reader.get_var_bytes(max_len);
+  if (!raw) {
+    return std::unexpected(raw.error());
+  }
+  if (raw->empty()) {
+    return make_error(ErrorCode::kInvalidMessage, std::string(label) + " must not be empty");
+  }
+  return *raw;
 }
 
 [[nodiscard]] Result<RejectCode> parse_reject_code(std::uint16_t raw) {
@@ -280,6 +304,156 @@ Result<PongPayload> parse_pong_message(const P2pMessage& message) {
     return wrong_message_type<PongPayload>();
   }
   return deserialize_pong(
+      std::span<const std::byte>(message.payload.data(), message.payload.size()));
+}
+
+Result<std::vector<std::byte>> serialize_tx_announce(const TxAnnouncePayload& payload) {
+  serialization::ByteWriter writer;
+  if (auto ok = put_blob(writer, payload.tx_bytes, protocol::kMaxTransactionSizeBytes, "tx_bytes");
+      !ok) {
+    return std::unexpected(ok.error());
+  }
+  return writer.data();
+}
+
+Result<TxAnnouncePayload> deserialize_tx_announce(std::span<const std::byte> bytes) {
+  serialization::ByteReader reader(bytes);
+  TxAnnouncePayload payload;
+  auto raw = get_blob(reader, protocol::kMaxTransactionSizeBytes, "tx_bytes");
+  if (!raw) {
+    return std::unexpected(raw.error());
+  }
+  payload.tx_bytes = std::move(*raw);
+  if (auto end = reader.expect_end(); !end) {
+    return std::unexpected(end.error());
+  }
+  return payload;
+}
+
+Result<P2pMessage> make_tx_announce_message(const TxAnnouncePayload& payload) {
+  auto body = serialize_tx_announce(payload);
+  if (!body) {
+    return std::unexpected(body.error());
+  }
+  P2pMessage message;
+  message.version = protocol::kProtocolVersion;
+  message.type = P2pMessageType::kTxAnnounce;
+  message.payload = std::move(*body);
+  return message;
+}
+
+Result<TxAnnouncePayload> parse_tx_announce_message(const P2pMessage& message) {
+  if (message.type != P2pMessageType::kTxAnnounce) {
+    return wrong_message_type<TxAnnouncePayload>();
+  }
+  return deserialize_tx_announce(
+      std::span<const std::byte>(message.payload.data(), message.payload.size()));
+}
+
+Result<std::vector<std::byte>> serialize_block_announce(const BlockAnnouncePayload& payload) {
+  serialization::ByteWriter writer;
+  if (auto ok = put_blob(writer, payload.block_bytes, protocol::kMaxBlockSizeBytes, "block_bytes");
+      !ok) {
+    return std::unexpected(ok.error());
+  }
+  return writer.data();
+}
+
+Result<BlockAnnouncePayload> deserialize_block_announce(std::span<const std::byte> bytes) {
+  serialization::ByteReader reader(bytes);
+  BlockAnnouncePayload payload;
+  auto raw = get_blob(reader, protocol::kMaxBlockSizeBytes, "block_bytes");
+  if (!raw) {
+    return std::unexpected(raw.error());
+  }
+  payload.block_bytes = std::move(*raw);
+  if (auto end = reader.expect_end(); !end) {
+    return std::unexpected(end.error());
+  }
+  return payload;
+}
+
+Result<P2pMessage> make_block_announce_message(const BlockAnnouncePayload& payload) {
+  auto body = serialize_block_announce(payload);
+  if (!body) {
+    return std::unexpected(body.error());
+  }
+  P2pMessage message;
+  message.version = protocol::kProtocolVersion;
+  message.type = P2pMessageType::kBlockAnnounce;
+  message.payload = std::move(*body);
+  return message;
+}
+
+Result<BlockAnnouncePayload> parse_block_announce_message(const P2pMessage& message) {
+  if (message.type != P2pMessageType::kBlockAnnounce) {
+    return wrong_message_type<BlockAnnouncePayload>();
+  }
+  return deserialize_block_announce(
+      std::span<const std::byte>(message.payload.data(), message.payload.size()));
+}
+
+std::vector<std::byte> serialize_block_request(const BlockRequestPayload& payload) {
+  serialization::ByteWriter writer;
+  writer.put_u32(payload.height);
+  return writer.data();
+}
+
+Result<BlockRequestPayload> deserialize_block_request(std::span<const std::byte> bytes) {
+  serialization::ByteReader reader(bytes);
+  BlockRequestPayload payload;
+  auto height = reader.get_u32();
+  if (!height) {
+    return std::unexpected(height.error());
+  }
+  payload.height = *height;
+  if (auto end = reader.expect_end(); !end) {
+    return std::unexpected(end.error());
+  }
+  return payload;
+}
+
+Result<P2pMessage> make_block_request_message(const BlockRequestPayload& payload) {
+  P2pMessage message;
+  message.version = protocol::kProtocolVersion;
+  message.type = P2pMessageType::kBlockRequest;
+  message.payload = serialize_block_request(payload);
+  return message;
+}
+
+Result<BlockRequestPayload> parse_block_request_message(const P2pMessage& message) {
+  if (message.type != P2pMessageType::kBlockRequest) {
+    return wrong_message_type<BlockRequestPayload>();
+  }
+  return deserialize_block_request(
+      std::span<const std::byte>(message.payload.data(), message.payload.size()));
+}
+
+Result<std::vector<std::byte>> serialize_block_response(const BlockResponsePayload& payload) {
+  return serialize_block_announce(payload);
+}
+
+Result<BlockResponsePayload> deserialize_block_response(std::span<const std::byte> bytes) {
+  return deserialize_block_announce(bytes);
+}
+
+Result<P2pMessage> make_block_response_message(const BlockResponsePayload& payload) {
+  auto body = serialize_block_response(payload);
+  if (!body) {
+    return std::unexpected(body.error());
+  }
+  P2pMessage message;
+  message.version = protocol::kProtocolVersion;
+  message.type = P2pMessageType::kBlockResponse;
+  message.payload = std::move(*body);
+  return message;
+}
+
+Result<BlockResponsePayload> parse_block_response_message(const P2pMessage& message) {
+  if (message.type != P2pMessageType::kBlockResponse) {
+    return wrong_message_type<BlockResponsePayload>();
+  }
+  return deserialize_block_response(
       std::span<const std::byte>(message.payload.data(), message.payload.size()));
 }
 

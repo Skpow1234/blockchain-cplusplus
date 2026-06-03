@@ -1,0 +1,59 @@
+#ifndef BLOCKCHAIN_NODE_PEER_STATE_HPP
+#define BLOCKCHAIN_NODE_PEER_STATE_HPP
+
+#include <cstdint>
+#include <map>
+#include <vector>
+
+#include "blockchain/consensus/chain.hpp"
+#include "blockchain/consensus/params.hpp"
+#include "blockchain/error.hpp"
+#include "blockchain/mempool/mempool.hpp"
+#include "blockchain/net/p2p_message.hpp"
+#include "blockchain/net/p2p_payloads.hpp"
+#include "blockchain/net/socket_io.hpp"
+#include "blockchain/node/config.hpp"
+#include "blockchain/protocol/block.hpp"
+
+namespace blockchain::node {
+
+// In-memory chain + mempool for Stage-2 relay mode. Blocks mined locally (or the
+// genesis block) are retained in a height-indexed catalog so peers can request
+// them by height. All network payloads are treated as hostile until validated.
+class PeerState {
+ public:
+  [[nodiscard]] static Result<PeerState> from_config(const NodeConfig& config);
+
+  [[nodiscard]] net::HandshakePayload local_handshake() const;
+  [[nodiscard]] std::uint32_t height() const noexcept { return chain_.height(); }
+
+  // Processes one inbound P2P message. May send zero or more replies on `socket`.
+  // Returns an error when the message is malformed or violates protocol rules.
+  [[nodiscard]] Result<void> handle_message(const net::P2pMessage& message, net::TcpSocket& socket);
+
+  // Looks up a block previously connected to this node's chain.
+  [[nodiscard]] const protocol::Block* block_at_height(std::uint32_t height) const noexcept;
+
+ private:
+  PeerState(consensus::Chain chain, mempool::Mempool mempool, std::string node_id);
+
+  [[nodiscard]] Result<void> on_tx_announce(std::span<const std::byte> payload_bytes);
+  [[nodiscard]] Result<void> on_block_announce(std::span<const std::byte> payload_bytes);
+  [[nodiscard]] Result<void> on_block_request(const net::BlockRequestPayload& request,
+                                              net::TcpSocket& socket);
+  [[nodiscard]] Result<void> on_block_response(std::span<const std::byte> payload_bytes);
+  [[nodiscard]] Result<protocol::Block> parse_block_bytes(std::span<const std::byte> bytes) const;
+  [[nodiscard]] Result<protocol::Transaction> parse_transaction_bytes(
+      std::span<const std::byte> bytes) const;
+
+  void store_block(std::uint32_t height, protocol::Block block);
+
+  consensus::Chain chain_;
+  mempool::Mempool mempool_;
+  std::string node_id_;
+  std::map<std::uint32_t, protocol::Block> catalog_;
+};
+
+}  // namespace blockchain::node
+
+#endif  // BLOCKCHAIN_NODE_PEER_STATE_HPP

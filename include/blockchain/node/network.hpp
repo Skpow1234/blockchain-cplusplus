@@ -20,6 +20,14 @@ namespace blockchain::node {
 // Client: connect, perform handshake, send ping and verify pong echo.
 [[nodiscard]] Result<void> run_ping_client(const NodeConfig& config);
 
+// Relay mode: chain-aware handshake plus block request/response sync and tx/block
+// relay handling. Uses --mine-blocks on the server to publish blocks to peers.
+[[nodiscard]] Result<void> serve_relay_connection(net::TcpSocket& socket, const NodeConfig& config);
+
+[[nodiscard]] Result<void> run_relay_server(const NodeConfig& config);
+
+[[nodiscard]] Result<void> run_relay_client(const NodeConfig& config);
+
 }  // namespace blockchain::node
 
 #endif  // BLOCKCHAIN_NODE_NETWORK_HPP

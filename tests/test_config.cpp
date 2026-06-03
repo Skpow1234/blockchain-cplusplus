@@ -7,6 +7,7 @@
 
 using blockchain::ErrorCode;
 using blockchain::node::LogLevel;
+using blockchain::node::NetworkMode;
 using blockchain::node::NodeConfig;
 using blockchain::node::parse_args;
 
@@ -63,6 +64,18 @@ TEST_CASE("simulator flags are parsed") {
 
 TEST_CASE("invalid coinbase recipient hex is rejected") {
   auto config = parse_args({"--coinbase-recipient", "not-valid"});
+  CHECK(!config.has_value());
+  CHECK(config.error().code == ErrorCode::kInvalidConfig);
+}
+
+TEST_CASE("network mode flag is parsed") {
+  auto config = parse_args({"--network-mode", "relay"});
+  CHECK(config.has_value());
+  CHECK(config->network_mode == NetworkMode::kRelay);
+}
+
+TEST_CASE("invalid network mode is rejected") {
+  auto config = parse_args({"--network-mode", "broadcast"});
   CHECK(!config.has_value());
   CHECK(config.error().code == ErrorCode::kInvalidConfig);
 }
