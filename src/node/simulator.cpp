@@ -7,6 +7,7 @@
 #include "blockchain/node/genesis.hpp"
 #include "blockchain/production/block_builder.hpp"
 #include "blockchain/protocol/constants.hpp"
+#include "blockchain/storage/chain_store.hpp"
 
 namespace blockchain::node {
 namespace {
@@ -53,6 +54,19 @@ constexpr std::uint64_t kSimulatorMempoolMaxBytes =
   return genesis_timestamp + static_cast<std::uint64_t>(height);
 }
 
+[[nodiscard]] SimulatorSummary summary_from_chain(const protocol::Block& genesis,
+                                                  const consensus::Chain& chain,
+                                                  std::uint32_t blocks_mined, bool restored) {
+  SimulatorSummary summary;
+  summary.genesis_hash = genesis.header.hash();
+  summary.tip_hash = chain.tip_hash();
+  summary.height = chain.height();
+  summary.utxo_count = chain.utxos().size();
+  summary.blocks_mined = blocks_mined;
+  summary.restored_from_disk = restored;
+  return summary;
+}
+
 }  // namespace
 
 Result<SimulatorSummary> run_simulator(const NodeConfig& config) {
@@ -63,6 +77,18 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config) {
   }
 
   const protocol::Block genesis = build_genesis_block(config);
+
+  if (config.restore) {
+    storage::ChainStore store(config.data_dir);
+    if (!store.ledger_exists()) {
+      return make_error(ErrorCode::kInvalidConfig, "no ledger found in data_dir for --restore");
+    }
+    auto chain = store.load_chain();
+    if (!chain) {
+      return std::unexpected(chain.error());
+    }
+    return summary_from_chain(genesis, *chain, 0, true);
+  }
   auto chain = consensus::Chain::create(genesis, consensus);
   if (!chain) {
     return std::unexpected(chain.error());
@@ -72,6 +98,9 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config) {
                                                .max_total_bytes = kSimulatorMempoolMaxBytes});
   const production::BlockTemplateParams tmpl_params =
       build_template_params(config, consensus, *recipient);
+
+  std::vector<protocol::Block> ledger;
+  ledger.push_back(genesis);
 
   for (std::uint32_t n = 0; n < config.mine_blocks; ++n) {
     const std::uint64_t timestamp =
@@ -85,15 +114,17 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config) {
     if (!fees) {
       return std::unexpected(fees.error());
     }
+    ledger.push_back(tmpl->block);
   }
 
-  SimulatorSummary summary;
-  summary.genesis_hash = genesis.header.hash();
-  summary.tip_hash = chain->tip_hash();
-  summary.height = chain->height();
-  summary.utxo_count = chain->utxos().size();
-  summary.blocks_mined = config.mine_blocks;
-  return summary;
+  if (config.persist) {
+    storage::ChainStore store(config.data_dir);
+    if (auto saved = store.save_ledger(ledger, consensus); !saved) {
+      return std::unexpected(saved.error());
+    }
+  }
+
+  return summary_from_chain(genesis, *chain, config.mine_blocks, false);
 }
 
 }  // namespace blockchain::node

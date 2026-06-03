@@ -225,6 +225,10 @@ Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
         return std::unexpected(parsed.error());
       }
       config.listen_port = static_cast<std::uint16_t>(*parsed);
+    } else if (arg == "--persist") {
+      config.persist = true;
+    } else if (arg == "--restore") {
+      config.restore = true;
     } else if (arg == "--network-mode") {
       auto value = require_value(arg);
       if (!value) {
@@ -265,6 +269,8 @@ std::string usage(std::string_view program) {
   out += "Options:\n";
   out += "  --node-id <id>             Node identifier (default: node-0)\n";
   out += "  --data-dir <path>          Data directory (default: ./data)\n";
+  out += "  --persist                  Write ledger.bin after simulator run\n";
+  out += "  --restore                  Load ledger.bin instead of mining (simulator)\n";
   out += "  --log-level <level>        error|warn|info|debug|trace (default: info)\n";
   out += "  --genesis-timestamp <n>    Deterministic genesis timestamp (default: 0)\n";
   out += "  --max-block-size <bytes>   Override max block size (default: protocol limit)\n";

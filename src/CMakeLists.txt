@@ -10,6 +10,7 @@ add_library(blockchain_core
   mempool/mempool.cpp
   production/block_builder.cpp
   consensus/chain.cpp
+  storage/chain_store.cpp
   net/p2p_message.cpp
   net/p2p_payloads.cpp
   net/socket_io.cpp

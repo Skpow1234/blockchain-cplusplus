@@ -79,3 +79,10 @@ TEST_CASE("invalid network mode is rejected") {
   CHECK(!config.has_value());
   CHECK(config.error().code == ErrorCode::kInvalidConfig);
 }
+
+TEST_CASE("persist and restore flags are parsed") {
+  auto config = parse_args({"--persist", "--restore"});
+  CHECK(config.has_value());
+  CHECK(config->persist);
+  CHECK(config->restore);
+}

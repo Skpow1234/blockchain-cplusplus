@@ -16,11 +16,12 @@ struct SimulatorSummary {
   std::uint32_t height = 0;
   std::size_t utxo_count = 0;
   std::uint32_t blocks_mined = 0;
+  bool restored_from_disk = false;
 };
 
 // Runs the deterministic single-process simulator: initialize the chain from
-// genesis, optionally mine `config.mine_blocks` empty (or mempool-filled)
-// blocks, and return the resulting tip state. No networking or storage.
+// genesis, optionally mine `config.mine_blocks`, optionally persist or restore
+// the ledger under `config.data_dir` when persist/restore flags are set.
 [[nodiscard]] Result<SimulatorSummary> run_simulator(const NodeConfig& config);
 
 }  // namespace blockchain::node

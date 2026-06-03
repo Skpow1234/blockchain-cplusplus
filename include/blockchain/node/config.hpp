@@ -32,6 +32,11 @@ struct NodeConfig {
   std::string data_dir = "./data";
   LogLevel log_level = LogLevel::kInfo;
 
+  // Stage 3: persist the block ledger to data_dir/ledger.bin after a successful run.
+  bool persist = false;
+  // Reload chain state from data_dir/ledger.bin (full replay validation) instead of mining.
+  bool restore = false;
+
   // Stage 1 (single-process simulator) parameters.
   std::uint64_t genesis_timestamp = 0;
   std::uint32_t max_block_size_bytes = 0;  // 0 => use protocol default
