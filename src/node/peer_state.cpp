@@ -135,8 +135,7 @@ Result<PeerState> PeerState::from_config(const NodeConfig& config) {
     for (const protocol::Transaction& tx : ledger->mempool_transactions) {
       if (auto ok = state.accept_transaction(tx); !ok) {
         return make_error(ErrorCode::kStorageCorruption,
-                          "stored mempool transaction failed re-validation: " +
-                              ok.error().message);
+                          "stored mempool transaction failed re-validation: " + ok.error().message);
       }
     }
     return state;
@@ -151,8 +150,8 @@ Result<PeerState> PeerState::from_config(const NodeConfig& config) {
   mempool::Mempool pool(pool_limits);
 
   PeerState state(std::move(*chain), std::move(pool), pool_policy, config.node_id,
-                  config.genesis_timestamp, consensus, tmpl_params, config.data_dir,
-                  config.persist, config.mine_after_tx);
+                  config.genesis_timestamp, consensus, tmpl_params, config.data_dir, config.persist,
+                  config.mine_after_tx);
   state.store_block(0, genesis);
 
   if (auto mined = state.mine_blocks(config.mine_blocks); !mined) {

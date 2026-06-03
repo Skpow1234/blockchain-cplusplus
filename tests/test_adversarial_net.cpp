@@ -24,9 +24,9 @@ using blockchain::net::make_block_request_message;
 using blockchain::net::make_handshake_message;
 using blockchain::net::make_ping_message;
 using blockchain::net::make_tx_announce_message;
-using blockchain::net::parse_pong_message;
 using blockchain::net::P2pMessage;
 using blockchain::net::P2pMessageType;
+using blockchain::net::parse_pong_message;
 using blockchain::net::parse_reject_message;
 using blockchain::net::recv_message;
 using blockchain::net::RejectCode;
@@ -67,7 +67,7 @@ HandshakePayload sample_handshake() {
 }
 
 [[nodiscard]] std::vector<std::byte> craft_wire(std::uint32_t version, std::uint16_t type,
-                                                  std::span<const std::byte> payload) {
+                                                std::span<const std::byte> payload) {
   ByteWriter writer;
   writer.put_u32(kNetworkMagic);
   writer.put_u32(version);
@@ -224,9 +224,8 @@ TEST_CASE("relay server rejects unsupported protocol version on the wire") {
   CHECK(socket.has_value());
   CHECK(exchange_valid_handshake(*socket));
 
-  const std::vector<std::byte> wire = craft_wire(kProtocolVersion + 1,
-                                                 static_cast<std::uint16_t>(P2pMessageType::kPing),
-                                                 {});
+  const std::vector<std::byte> wire =
+      craft_wire(kProtocolVersion + 1, static_cast<std::uint16_t>(P2pMessageType::kPing), {});
   CHECK(socket->send_framed(wire).has_value());
   socket->close();
 
@@ -292,7 +291,8 @@ TEST_CASE("relay server handles duplicate ping messages until disconnect") {
   CHECK(exchange_valid_handshake(*socket));
 
   for (int n = 0; n < 2; ++n) {
-    auto ping = make_ping_message(blockchain::net::PingPayload{.nonce = static_cast<std::uint64_t>(n)});
+    auto ping =
+        make_ping_message(blockchain::net::PingPayload{.nonce = static_cast<std::uint64_t>(n)});
     CHECK(ping.has_value());
     CHECK(send_message(*socket, *ping).has_value());
     auto inbound = recv_message(*socket);

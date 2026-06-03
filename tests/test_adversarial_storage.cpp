@@ -28,12 +28,12 @@ using blockchain::node::build_genesis_block;
 using blockchain::node::NodeConfig;
 using blockchain::node::PeerState;
 using blockchain::protocol::Block;
+using blockchain::protocol::compute_merkle_root;
+using blockchain::protocol::kBlockVersion;
 using blockchain::protocol::OutPoint;
 using blockchain::protocol::Transaction;
 using blockchain::protocol::TxInput;
 using blockchain::protocol::TxOutput;
-using blockchain::protocol::compute_merkle_root;
-using blockchain::protocol::kBlockVersion;
 using blockchain::storage::ChainStore;
 
 namespace {
@@ -253,8 +253,9 @@ TEST_CASE("peer state restore rejects ledger with invalid mempool transaction") 
   bad.outputs.push_back(output);
 
   ChainStore store(dir);
-  CHECK(store.save_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{},
-                          std::span<const Transaction>(&bad, 1))
+  CHECK(store
+            .save_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{},
+                         std::span<const Transaction>(&bad, 1))
             .has_value());
 
   config.restore = true;
@@ -281,8 +282,7 @@ TEST_CASE("decode rejects truncated v2 mempool section") {
   CHECK(encoded.has_value());
 
   const std::size_t truncated_size = encoded->size() - 8;
-  auto err = ChainStore::decode_ledger(
-      std::span<const std::byte>(encoded->data(), truncated_size));
+  auto err = ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), truncated_size));
   CHECK(!err.has_value());
   CHECK(err.error().code == ErrorCode::kStorageCorruption);
 }

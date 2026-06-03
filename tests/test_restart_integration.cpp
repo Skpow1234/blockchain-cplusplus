@@ -29,9 +29,9 @@ using blockchain::node::PeerState;
 using blockchain::node::RelayServerOptions;
 using blockchain::node::run_relay_client;
 using blockchain::node::run_relay_server;
+using blockchain::node::run_simulator;
 using blockchain::node::SimulatorOptions;
 using blockchain::node::SimulatorStep;
-using blockchain::node::run_simulator;
 using blockchain::storage::ChainStore;
 
 namespace {

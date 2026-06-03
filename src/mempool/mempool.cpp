@@ -75,7 +75,8 @@ bool lower_feerate_for_eviction(const Mempool::Entry& a, const Mempool::Entry& b
   return !Hash256Less{}(a.txid, b.txid);
 }
 
-const Mempool::Entry* find_lowest_feerate(const std::map<crypto::Hash256, Mempool::Entry, Hash256Less>& by_txid) {
+const Mempool::Entry* find_lowest_feerate(
+    const std::map<crypto::Hash256, Mempool::Entry, Hash256Less>& by_txid) {
   const Mempool::Entry* worst = nullptr;
   for (const auto& [txid, entry] : by_txid) {
     (void)txid;
@@ -173,10 +174,10 @@ std::vector<protocol::Transaction> Mempool::sorted_transactions() const {
     (void)txid;
     out.push_back(entry.transaction);
   }
-  std::sort(out.begin(), out.end(), [](const protocol::Transaction& a,
-                                       const protocol::Transaction& b) {
-    return Hash256Less{}(a.txid(), b.txid());
-  });
+  std::sort(out.begin(), out.end(),
+            [](const protocol::Transaction& a, const protocol::Transaction& b) {
+              return Hash256Less{}(a.txid(), b.txid());
+            });
   return out;
 }
 

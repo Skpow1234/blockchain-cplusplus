@@ -394,7 +394,8 @@ std::string usage(std::string_view program) {
   out += "  --mine-after-tx <n>        Relay: mine n blocks after each tx announce (default: 0)\n";
   out += "  --relay-max-sessions <n>   Relay server: serve n sequential peers (default: 1)\n";
   out += "  --announce-tx-file <path>  Relay client: announce tx from file (repeatable)\n";
-  out += "  --relay-blocks-after-tx <n> Relay client: pull n blocks after tx announce (default: 0)\n";
+  out +=
+      "  --relay-blocks-after-tx <n> Relay client: pull n blocks after tx announce (default: 0)\n";
   out += "  --mempool-max-transactions <n> Mempool tx count limit (default: documented default)\n";
   out += "  --mempool-max-bytes <n>    Mempool total byte limit (default: documented default)\n";
   out += "  --min-relay-feerate <n>    Minimum fee per serialized byte (default: 0)\n";

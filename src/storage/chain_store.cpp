@@ -240,14 +240,15 @@ bool ChainStore::ledger_exists() const {
   return is_regular_file(ledger_path(data_dir_));
 }
 
-Result<std::vector<std::byte>> ChainStore::encode_ledger(std::span<const protocol::Block> blocks,
-                                                         const consensus::ConsensusParams& params,
-                                                         std::span<const protocol::Transaction> mempool) {
+Result<std::vector<std::byte>> ChainStore::encode_ledger(
+    std::span<const protocol::Block> blocks, const consensus::ConsensusParams& params,
+    std::span<const protocol::Transaction> mempool) {
   if (blocks.size() > kMaxLedgerBlocks) {
     return make_error(ErrorCode::kResourceLimitExceeded, "too many blocks for ledger");
   }
   if (mempool.size() > kMaxLedgerMempoolTransactions) {
-    return make_error(ErrorCode::kResourceLimitExceeded, "too many mempool transactions for ledger");
+    return make_error(ErrorCode::kResourceLimitExceeded,
+                      "too many mempool transactions for ledger");
   }
 
   serialization::ByteWriter writer;

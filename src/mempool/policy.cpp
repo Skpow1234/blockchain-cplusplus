@@ -34,7 +34,7 @@ bool u128_gte(std::uint64_t lhs_hi, std::uint64_t lhs_lo, std::uint64_t rhs_hi,
 }
 
 [[nodiscard]] Result<void> check_min_relay_feerate(std::uint64_t fee, std::uint64_t size_bytes,
-                                                  const MempoolPolicy& policy) {
+                                                   const MempoolPolicy& policy) {
   if (policy.min_relay_feerate == 0 || size_bytes == 0) {
     return {};
   }
@@ -46,7 +46,8 @@ bool u128_gte(std::uint64_t lhs_hi, std::uint64_t lhs_lo, std::uint64_t rhs_hi,
   std::uint64_t fee_hi = 0;
   std::uint64_t fee_lo = fee;
   if (!u128_gte(fee_hi, fee_lo, required_hi, required_lo)) {
-    return make_error(ErrorCode::kPolicyRejected, "transaction fee rate below minimum relay feerate");
+    return make_error(ErrorCode::kPolicyRejected,
+                      "transaction fee rate below minimum relay feerate");
   }
   return {};
 }
