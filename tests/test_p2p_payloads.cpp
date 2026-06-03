@@ -108,8 +108,8 @@ TEST_CASE("reject rejects unknown code") {
   CHECK(bytes.has_value());
   bytes->at(0) = std::byte{0xFF};  // corrupt code field
 
-  auto decoded = blockchain::net::deserialize_reject(
-      std::span<const std::byte>(bytes->data(), bytes->size()));
+  auto decoded =
+      blockchain::net::deserialize_reject(std::span<const std::byte>(bytes->data(), bytes->size()));
   CHECK(!decoded.has_value());
 }
 

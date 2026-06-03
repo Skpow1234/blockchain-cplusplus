@@ -17,8 +17,8 @@ namespace {
   if (id.size() > kMaxNodeIdBytes) {
     return make_error(ErrorCode::kInvalidMessage, "node_id exceeds maximum length");
   }
-  const auto bytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(id.data()),
-                                                id.size());
+  const auto bytes =
+      std::span<const std::byte>(reinterpret_cast<const std::byte*>(id.data()), id.size());
   writer.put_var_bytes(bytes);
   return {};
 }
@@ -39,8 +39,8 @@ namespace {
   if (reason.size() > kMaxRejectReasonBytes) {
     return make_error(ErrorCode::kInvalidMessage, "reject reason exceeds maximum length");
   }
-  const auto bytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(reason.data()),
-                                                reason.size());
+  const auto bytes =
+      std::span<const std::byte>(reinterpret_cast<const std::byte*>(reason.data()), reason.size());
   writer.put_var_bytes(bytes);
   return {};
 }
@@ -62,8 +62,7 @@ namespace {
     case RejectCode::kInternal:
       return static_cast<RejectCode>(raw);
   }
-  return make_error(ErrorCode::kInvalidMessage,
-                    "unknown reject code: " + std::to_string(raw));
+  return make_error(ErrorCode::kInvalidMessage, "unknown reject code: " + std::to_string(raw));
 }
 
 [[nodiscard]] Result<void> expect_exact_size(std::span<const std::byte> bytes,
