@@ -54,3 +54,5 @@ docs/DESIGN.md
 
 test_storage_*
 test_relay_persist_*
+test_adv_storage_*
+test_relay_restore_srv

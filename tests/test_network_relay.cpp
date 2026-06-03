@@ -314,6 +314,69 @@ TEST_CASE("relay server mines announced tx and client syncs the new block") {
   CHECK_EQ(server_height.load(), static_cast<std::uint32_t>(2));
 }
 
+TEST_CASE("relay server restores from disk and serves blocks to a peer") {
+  blockchain::net::SocketLibrary lib;
+
+  const std::string dir = "test_relay_restore_srv";
+  (void)std::remove((dir + "/ledger.bin").c_str());
+#ifdef _WIN32
+  (void)_mkdir(dir.c_str());
+#else
+  (void)mkdir(dir.c_str(), 0755);
+#endif
+
+  NodeConfig seed = relay_test_config();
+  seed.data_dir = dir;
+  seed.mine_blocks = 2;
+  seed.persist = true;
+  CHECK(PeerState::from_config(seed).has_value());
+
+  std::atomic<std::uint16_t> port{0};
+  std::atomic<bool> server_failed{false};
+
+  NodeConfig server_config = seed;
+  server_config.restore = true;
+  server_config.mine_blocks = 0;
+  server_config.persist = false;
+  server_config.network_mode = NetworkMode::kRelay;
+
+  std::thread server([&]() {
+    blockchain::net::TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
+    auto listener = blockchain::net::TcpListener::bind(bind_ep);
+    if (!listener) {
+      server_failed.store(true);
+      return;
+    }
+    auto bound = listener->bound_port();
+    if (!bound) {
+      server_failed.store(true);
+      return;
+    }
+    port.store(*bound);
+
+    auto client = listener->accept();
+    if (!client || !serve_relay_connection(*client, server_config).has_value()) {
+      server_failed.store(true);
+    }
+  });
+
+  while (port.load() == 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  NodeConfig client_config = seed;
+  client_config.restore = false;
+  client_config.peer_host = "127.0.0.1";
+  client_config.peer_port = port.load();
+
+  auto result = run_relay_client(client_config);
+  CHECK(result.has_value());
+  CHECK_EQ(result->height, static_cast<std::uint32_t>(2));
+
+  server.join();
+  CHECK(!server_failed.load());
+}
+
 TEST_CASE("relay persist and restore reloads the same tip") {
   const std::string dir = "test_relay_persist_1";
   (void)std::remove((dir + "/ledger.bin").c_str());

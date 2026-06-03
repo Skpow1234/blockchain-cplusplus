@@ -30,6 +30,31 @@ jobs:
       - name: Run tests
         run: ctest --preset asan-ubsan --output-on-failure
 
+  adversarial:
+    name: adversarial tests (debug)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++-14
+
+      - name: Configure
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: cmake --preset debug
+
+      - name: Build
+        run: cmake --build --preset debug --parallel
+
+      - name: Run adversarial tests
+        run: |
+          ctest --preset debug --output-on-failure -R 'adversarial|storage|network_relay'
+
   benchmarks:
     name: benchmarks
     runs-on: ubuntu-24.04

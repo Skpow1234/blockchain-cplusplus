@@ -39,7 +39,11 @@ int run(const std::vector<std::string>& args, std::string_view program) {
         }
       }
       std::cout << (relay ? "relay server" : "ping server") << " completed on "
-                << config->listen_host << ":" << config->listen_port << "\n";
+                << config->listen_host << ":" << config->listen_port;
+      if (relay && config->restore) {
+        std::cout << " (restored from " << config->data_dir << ")";
+      }
+      std::cout << "\n";
       return 0;
     }
     if (relay) {
