@@ -6,6 +6,7 @@ add_library(blockchain_core
   protocol/block.cpp
   state/utxo_set.cpp
   validation/transaction_validation.cpp
+  validation/block_validation.cpp
   mempool/mempool.cpp
   node/config.cpp
   node/genesis.cpp)
