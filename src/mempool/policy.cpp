@@ -43,8 +43,8 @@ bool u128_gte(std::uint64_t lhs_hi, std::uint64_t lhs_lo, std::uint64_t rhs_hi,
   std::uint64_t required_lo = 0;
   mul_u64(policy.min_relay_feerate, size_bytes, required_hi, required_lo);
 
-  std::uint64_t fee_hi = 0;
-  std::uint64_t fee_lo = fee;
+  const std::uint64_t fee_hi = 0;
+  const std::uint64_t fee_lo = fee;
   if (!u128_gte(fee_hi, fee_lo, required_hi, required_lo)) {
     return make_error(ErrorCode::kPolicyRejected,
                       "transaction fee rate below minimum relay feerate");
