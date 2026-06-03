@@ -4,6 +4,7 @@ add_library(blockchain_core
   serialization/byte_io.cpp
   protocol/transaction.cpp
   protocol/block.cpp
+  state/utxo_set.cpp
   node/config.cpp
   node/genesis.cpp)
 
