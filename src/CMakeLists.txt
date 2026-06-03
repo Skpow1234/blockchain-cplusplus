@@ -11,6 +11,7 @@ add_library(blockchain_core
   production/block_builder.cpp
   consensus/chain.cpp
   net/p2p_message.cpp
+  net/p2p_payloads.cpp
   node/config.cpp
   node/genesis.cpp
   node/simulator.cpp)

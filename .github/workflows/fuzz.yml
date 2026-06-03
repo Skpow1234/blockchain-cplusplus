@@ -38,3 +38,6 @@ jobs:
 
       - name: Fuzz P2P messages
         run: ./build/fuzz/fuzz/fuzz_p2p_message -max_total_time=30
+
+      - name: Fuzz P2P handshake payloads
+        run: ./build/fuzz/fuzz/fuzz_p2p_handshake_payload -max_total_time=30
