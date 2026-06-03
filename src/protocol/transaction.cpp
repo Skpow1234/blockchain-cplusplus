@@ -107,7 +107,8 @@ Transaction make_coinbase(std::uint32_t height, std::uint64_t value,
   // Encode the height (little-endian) into the leading bytes of the otherwise
   // unused coinbase outpoint txid to keep per-height coinbase ids distinct.
   input.prevout.txid = crypto::Hash256{};
-  for (std::size_t i = 0; i < sizeof(height); ++i) {
+  constexpr std::size_t kHeightBytes = sizeof(std::uint32_t);
+  for (std::size_t i = 0; i < kHeightBytes; ++i) {
     input.prevout.txid[i] = static_cast<std::byte>((height >> (8U * i)) & 0xFFU);
   }
   input.prevout.index = kNullPrevoutIndex;
