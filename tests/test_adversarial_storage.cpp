@@ -45,6 +45,14 @@ std::string temp_data_dir() {
   return dir;
 }
 
+bool is_regular_file(const std::string& path) {
+  std::ifstream input(path, std::ios::binary | std::ios::ate);
+  if (!input) {
+    return false;
+  }
+  return input.tellg() > 0;
+}
+
 void write_bytes(const std::string& path, std::span<const std::byte> bytes) {
   std::ofstream out(path, std::ios::binary | std::ios::trunc);
   out.write(reinterpret_cast<const char*>(bytes.data()),
@@ -71,12 +79,15 @@ TEST_CASE("decode rejects unsupported ledger format version") {
   const Block genesis = build_genesis_block(config);
   auto encoded = ChainStore::encode_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{});
   CHECK(encoded.has_value());
-  (*encoded)[4] = std::byte{0xFF};
 
   auto err = ChainStore::decode_ledger(
       std::span<const std::byte>(encoded->data(), encoded->size()));
+  CHECK(err.has_value());
+
+  (*encoded)[4] = std::byte{0x02};
+  err = ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
   CHECK(!err.has_value());
-  CHECK(err.error().code == ErrorCode::kUnsupportedVersion);
+  CHECK(err.error().code == ErrorCode::kStorageCorruption);
 }
 
 TEST_CASE("save rejects non-contiguous block heights") {
@@ -136,6 +147,9 @@ TEST_CASE("load rejects checksum tampering") {
 
 TEST_CASE("peer state restore fails when ledger is missing") {
   const std::string dir = temp_data_dir();
+  ChainStore store(dir);
+  CHECK(!store.ledger_exists());
+
   NodeConfig config;
   config.data_dir = dir;
   config.restore = true;
@@ -158,6 +172,7 @@ TEST_CASE("incomplete temp ledger is not loaded as canonical state") {
               std::span<const std::byte>(encoded->data(), encoded->size() / 2));
 
   CHECK(!store.ledger_exists());
+  CHECK(!is_regular_file(ChainStore::ledger_path(dir)));
   auto err = store.load_chain();
   CHECK(!err.has_value());
 }

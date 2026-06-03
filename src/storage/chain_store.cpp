@@ -120,8 +120,11 @@ namespace {
 }
 
 [[nodiscard]] bool is_regular_file(const std::string& path) {
-  std::ifstream input(path, std::ios::binary);
-  return input.good();
+  std::ifstream input(path, std::ios::binary | std::ios::ate);
+  if (!input) {
+    return false;
+  }
+  return input.tellg() > 0;
 }
 
 [[nodiscard]] Result<void> create_directory(const std::string& path) {

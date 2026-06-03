@@ -15,6 +15,7 @@
 #include "blockchain/node/config.hpp"
 #include "blockchain/node/network.hpp"
 #include "blockchain/node/peer_state.hpp"
+#include "blockchain/node/simulator.hpp"
 #include "blockchain/protocol/transaction.hpp"
 #include "testing.hpp"
 
@@ -25,6 +26,7 @@ using blockchain::node::NodeConfig;
 using blockchain::node::PeerState;
 using blockchain::node::RelayClientOptions;
 using blockchain::node::run_relay_client;
+using blockchain::node::run_simulator;
 using blockchain::node::serve_relay_connection;
 using blockchain::protocol::OutPoint;
 using blockchain::protocol::Transaction;
@@ -329,7 +331,7 @@ TEST_CASE("relay server restores from disk and serves blocks to a peer") {
   seed.data_dir = dir;
   seed.mine_blocks = 2;
   seed.persist = true;
-  CHECK(PeerState::from_config(seed).has_value());
+  CHECK(run_simulator(seed).has_value());
 
   std::atomic<std::uint16_t> port{0};
   std::atomic<bool> server_failed{false};
@@ -337,6 +339,7 @@ TEST_CASE("relay server restores from disk and serves blocks to a peer") {
   NodeConfig server_config = seed;
   server_config.restore = true;
   server_config.mine_blocks = 0;
+  server_config.mine_after_tx = 0;
   server_config.persist = false;
   server_config.network_mode = NetworkMode::kRelay;
 
