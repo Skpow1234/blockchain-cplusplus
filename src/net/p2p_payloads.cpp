@@ -56,6 +56,9 @@ namespace {
 
 [[nodiscard]] Result<void> put_blob(serialization::ByteWriter& writer, std::span<const std::byte> bytes,
                                     std::uint32_t max_len, std::string_view label) {
+  if (bytes.empty()) {
+    return make_error(ErrorCode::kInvalidMessage, std::string(label) + " must not be empty");
+  }
   if (bytes.size() > max_len) {
     return make_error(ErrorCode::kInvalidMessage,
                       std::string(label) + " exceeds maximum encoded length");

@@ -122,11 +122,18 @@ namespace {
   return {};
 }
 
+[[nodiscard]] bool peer_disconnected(const Error& err) noexcept {
+  return err.code == ErrorCode::kPeerMisbehavior && err.message.find("socket recv failed") != std::string::npos;
+}
+
 [[nodiscard]] Result<void> relay_message_loop(net::TcpSocket& socket, PeerState& state) {
   constexpr std::size_t kMaxRelayMessages = 64;
   for (std::size_t i = 0; i < kMaxRelayMessages; ++i) {
     auto inbound = net::recv_message(socket);
     if (!inbound) {
+      if (i > 0 && peer_disconnected(inbound.error())) {
+        return {};
+      }
       return std::unexpected(inbound.error());
     }
     if (auto ok = state.handle_message(*inbound, socket); !ok) {
