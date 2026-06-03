@@ -65,8 +65,7 @@ class Chain {
                                                    mempool::Mempool* mempool = nullptr);
 
  private:
-  Chain(protocol::BlockHeader tip, state::UtxoSet utxos)
-      : tip_(tip), utxos_(std::move(utxos)) {}
+  Chain(protocol::BlockHeader tip, state::UtxoSet utxos) : tip_(tip), utxos_(std::move(utxos)) {}
 
   protocol::BlockHeader tip_{};
   state::UtxoSet utxos_;
