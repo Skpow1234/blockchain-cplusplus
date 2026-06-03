@@ -27,7 +27,6 @@
 #include "blockchain/storage/ledger_format.hpp"
 
 namespace blockchain::storage {
-namespace {
 
 [[nodiscard]] std::uint32_t ledger_checksum(std::span<const std::byte> body) {
   const crypto::Hash256 digest = crypto::sha256(body);
@@ -37,6 +36,8 @@ namespace {
   }
   return value;
 }
+
+namespace {
 
 [[nodiscard]] Result<void> put_block(serialization::ByteWriter& writer,
                                      const protocol::Block& block) {
@@ -214,6 +215,17 @@ namespace {
 
 }  // namespace
 
+std::uint32_t ChainStore::ledger_body_checksum(std::span<const std::byte> body) {
+  return ledger_checksum(body);
+}
+
+std::vector<std::byte> ChainStore::with_ledger_checksum(std::span<const std::byte> body) {
+  serialization::ByteWriter writer;
+  writer.put_bytes(body);
+  writer.put_u32(ledger_checksum(body));
+  return writer.data();
+}
+
 ChainStore::ChainStore(std::string data_dir) : data_dir_(std::move(data_dir)) {}
 
 std::string ChainStore::ledger_path(const std::string& data_dir) {
@@ -259,11 +271,7 @@ Result<std::vector<std::byte>> ChainStore::encode_ledger(std::span<const protoco
   }
 
   const std::vector<std::byte> body = writer.data();
-  const std::uint32_t checksum = ledger_checksum(body);
-  serialization::ByteWriter with_checksum;
-  with_checksum.put_bytes(std::span<const std::byte>(body.data(), body.size()));
-  with_checksum.put_u32(checksum);
-  return with_checksum.data();
+  return with_ledger_checksum(std::span<const std::byte>(body.data(), body.size()));
 }
 
 Result<LedgerData> ChainStore::decode_ledger(std::span<const std::byte> bytes) {

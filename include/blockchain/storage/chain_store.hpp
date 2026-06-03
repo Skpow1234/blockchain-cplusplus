@@ -51,6 +51,11 @@ class ChainStore {
       std::span<const protocol::Transaction> mempool = {});
   [[nodiscard]] static Result<LedgerData> decode_ledger(std::span<const std::byte> bytes);
 
+  // Test helper: checksum over ledger body bytes (everything before the checksum field).
+  [[nodiscard]] static std::uint32_t ledger_body_checksum(std::span<const std::byte> body);
+  [[nodiscard]] static std::vector<std::byte> with_ledger_checksum(
+      std::span<const std::byte> body);
+
  private:
   std::string data_dir_;
 };

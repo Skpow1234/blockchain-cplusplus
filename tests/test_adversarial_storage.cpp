@@ -84,7 +84,12 @@ TEST_CASE("decode rejects unsupported ledger format version") {
       ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
   CHECK(err.has_value());
 
-  (*encoded)[4] = std::byte{0x63};
+  std::vector<std::byte> body(encoded->begin(), encoded->end() - 4);
+  body[4] = std::byte{0x63};
+  body[5] = std::byte{0x00};
+  body[6] = std::byte{0x00};
+  body[7] = std::byte{0x00};
+  *encoded = ChainStore::with_ledger_checksum(body);
   err = ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
   CHECK(!err.has_value());
   CHECK(err.error().code == ErrorCode::kUnsupportedVersion);
