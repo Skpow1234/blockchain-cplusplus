@@ -6,6 +6,7 @@
 
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/error.hpp"
+#include "blockchain/protocol/constants.hpp"
 #include "blockchain/protocol/transaction.hpp"
 #include "blockchain/serialization/byte_io.hpp"
 
