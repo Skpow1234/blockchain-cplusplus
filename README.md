@@ -1,5 +1,30 @@
 # Blockchain (C++23)
 
+<p align="center">
+  <a href="https://github.com/Skpow1234/blockchain-cplusplus/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/Skpow1234/blockchain-cplusplus/ci.yml?style=flat-square&logo=githubactions&logoColor=white&label=CI" alt="CI">
+  </a>
+  <a href="https://github.com/Skpow1234/blockchain-cplusplus/actions/workflows/nightly.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/Skpow1234/blockchain-cplusplus/nightly.yml?style=flat-square&logo=githubactions&logoColor=white&label=Nightly" alt="Nightly">
+  </a>
+  <a href="https://github.com/Skpow1234/blockchain-cplusplus/actions/workflows/fuzz.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/Skpow1234/blockchain-cplusplus/fuzz.yml?style=flat-square&logo=githubactions&logoColor=white&label=Fuzz" alt="Fuzz">
+  </a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/C%2B%2B-23-00599C?style=flat-square&logo=cplusplus&logoColor=white" alt="C++23">
+  <img src="https://img.shields.io/badge/CMake-3.25+-064F8C?style=flat-square&logo=cmake&logoColor=white" alt="CMake">
+  <img src="https://img.shields.io/badge/Ninja-build-000000?style=flat-square" alt="Ninja">
+  <img src="https://img.shields.io/badge/CTest-26%20suites-1f6feb?style=flat-square" alt="CTest">
+  <img src="https://img.shields.io/badge/GCC-14+-007EC6?style=flat-square&logo=gnu&logoColor=white" alt="GCC">
+  <img src="https://img.shields.io/badge/clang--tidy-18-262D3A?style=flat-square&logo=llvm&logoColor=white" alt="clang-tidy">
+  <img src="https://img.shields.io/badge/ASan%20%2B%20UBSan-enabled-fb8500?style=flat-square" alt="ASan UBSan">
+  <img src="https://img.shields.io/badge/TSan-enabled-e63946?style=flat-square" alt="TSan">
+  <img src="https://img.shields.io/badge/libFuzzer-smoke-512BD4?style=flat-square&logo=google&logoColor=white" alt="libFuzzer">
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey?style=flat-square" alt="Platform">
+</p>
+
 A **local, deterministic, testable blockchain** implementation in modern C++23. The project is built for engineering validation: correctness, security, reproducibility, and maintainability come before hype.
 
 This is **not** a mainnet coin. There are no wallets, tokenomics, exchanges, or monetary claims. The goal is a small, robust system you can simulate, test under sanitizers, fuzz, restart safely, and eventually run as a **controlled public testnet** for protocol research.
