@@ -121,6 +121,7 @@ TEST_CASE("relay client syncs a mined block from the server") {
   client_config.node_id = "relay-client";
   client_config.network_mode = NetworkMode::kRelay;
   client_config.mine_blocks = 0;
+  client_config.persist = false;
   client_config.peer_host = "127.0.0.1";
   client_config.peer_port = port.load();
 
@@ -174,6 +175,7 @@ TEST_CASE("relay client catches up across multiple mined blocks") {
   NodeConfig client_config = server_config;
   client_config.node_id = "relay-client";
   client_config.mine_blocks = 0;
+  client_config.persist = false;
   client_config.peer_host = "127.0.0.1";
   client_config.peer_port = port.load();
 
@@ -235,6 +237,7 @@ TEST_CASE("relay client tx announce is admitted on the server") {
   NodeConfig client_config = server_config;
   client_config.node_id = "relay-client";
   client_config.mine_blocks = 0;
+  client_config.persist = false;
   client_config.peer_host = "127.0.0.1";
   client_config.peer_port = port.load();
 
@@ -369,6 +372,7 @@ TEST_CASE("relay server restores from disk and serves blocks to a peer") {
 
   NodeConfig client_config = seed;
   client_config.restore = false;
+  client_config.persist = false;
   client_config.peer_host = "127.0.0.1";
   client_config.peer_port = port.load();
 

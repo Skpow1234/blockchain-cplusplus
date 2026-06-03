@@ -208,7 +208,11 @@ Result<RelayClientResult> run_relay_client(const NodeConfig& config,
     return std::unexpected(socket.error());
   }
 
-  auto state = PeerState::from_config(config);
+  // Bootstrap local chain state without writing the ledger; persisting here would
+  // clobber a server's on-disk chain when both share data_dir.
+  NodeConfig bootstrap = config;
+  bootstrap.persist = false;
+  auto state = PeerState::from_config(bootstrap);
   if (!state) {
     return std::unexpected(state.error());
   }
@@ -261,6 +265,12 @@ Result<RelayClientResult> run_relay_client(const NodeConfig& config,
     }
     if (auto ok = state->handle_message(*inbound, *socket); !ok) {
       return std::unexpected(ok.error());
+    }
+  }
+
+  if (config.persist) {
+    if (auto saved = state->persist_ledger(); !saved) {
+      return std::unexpected(saved.error());
     }
   }
 
