@@ -102,8 +102,8 @@ Result<std::uint64_t> connect_block(const protocol::Block& block, state::UtxoSet
     if (!fee) {
       return std::unexpected(fee.error());
     }
-    if (auto mature = check_coinbase_maturity(tx, working, block.header.height,
-                                              params.coinbase_maturity);
+    if (auto mature =
+            check_coinbase_maturity(tx, working, block.header.height, params.coinbase_maturity);
         !mature) {
       return std::unexpected(mature.error());
     }

@@ -116,8 +116,7 @@ Result<BlockTemplate> build_block_template(const protocol::BlockHeader& tip,
   if (!checked_add(params.consensus.block_subsidy, total_fees, reward)) {
     return make_error(ErrorCode::kInvalidBlock, "coinbase reward overflow");
   }
-  block.transactions.front() =
-      protocol::make_coinbase(height, reward, params.coinbase_recipient);
+  block.transactions.front() = protocol::make_coinbase(height, reward, params.coinbase_recipient);
 
   block.header.merkle_root = protocol::compute_merkle_root(block.transactions);
 
