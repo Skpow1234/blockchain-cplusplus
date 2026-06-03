@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Local two-process relay demo: seed node mines blocks, client syncs over TCP.
+# Local multi-process relay demo: seed node mines blocks, one or two clients sync over TCP.
+# SCENARIO=default|two-client (default: single client sync)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PRESET="${PRESET:-debug}"
 BUILD_DIR="${BUILD_DIR:-${ROOT}/build/${PRESET}}"
 BIN="${BIN:-${BUILD_DIR}/src/blockchain_node}"
+SCENARIO="${SCENARIO:-default}"
 
 if [[ ! -x "${BIN}" ]]; then
   echo "building blockchain_node (${PRESET})..." >&2
@@ -17,10 +19,11 @@ WORK="${ROOT}/.local_network_run"
 PORT_FILE="${WORK}/seed.port"
 SEED_DIR="${WORK}/seed"
 CLIENT_DIR="${WORK}/client"
+CLIENT2_DIR="${WORK}/client2"
 mkdir -p "${WORK}"
 rm -f "${PORT_FILE}"
-rm -rf "${SEED_DIR}" "${CLIENT_DIR}"
-mkdir -p "${SEED_DIR}" "${CLIENT_DIR}"
+rm -rf "${SEED_DIR}" "${CLIENT_DIR}" "${CLIENT2_DIR}"
+mkdir -p "${SEED_DIR}" "${CLIENT_DIR}" "${CLIENT2_DIR}"
 
 COMMON=(
   --genesis-timestamp 1700000100
@@ -29,11 +32,16 @@ COMMON=(
   --coinbase-recipient a100000000000000000000000000000000000000000000000000000000000000
 )
 
-echo "starting relay seed..."
+SEED_EXTRA=(--mine-blocks 2)
+if [[ "${SCENARIO}" == "two-client" ]]; then
+  SEED_EXTRA+=(--relay-max-sessions 2)
+fi
+
+echo "starting relay seed (scenario=${SCENARIO})..."
 "${BIN}" "${COMMON[@]}" \
   --network-mode relay \
   --data-dir "${SEED_DIR}" \
-  --mine-blocks 2 \
+  "${SEED_EXTRA[@]}" \
   --listen-port 0 \
   --port-file "${PORT_FILE}" &
 SEED_PID=$!
@@ -66,4 +74,15 @@ echo "starting relay client..."
   --peer "127.0.0.1:${PORT}"
 
 echo "client synced; ledger at ${CLIENT_DIR}/ledger.bin"
+
+if [[ "${SCENARIO}" == "two-client" ]]; then
+  echo "starting second relay client..."
+  "${BIN}" "${COMMON[@]}" \
+    --network-mode relay \
+    --data-dir "${CLIENT2_DIR}" \
+    --persist \
+    --peer "127.0.0.1:${PORT}"
+  echo "second client synced; ledger at ${CLIENT2_DIR}/ledger.bin"
+fi
+
 wait "${SEED_PID}"

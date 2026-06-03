@@ -220,6 +220,22 @@ Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
         return std::unexpected(parsed.error());
       }
       config.relay_max_sessions = *parsed;
+    } else if (arg == "--relay-blocks-after-tx") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u32(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.relay_blocks_after_tx = *parsed;
+    } else if (arg == "--announce-tx-file") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      config.announce_tx_files.push_back(*value);
     } else if (arg == "--mine-blocks") {
       auto value = require_value(arg);
       if (!value) {
@@ -332,6 +348,8 @@ std::string usage(std::string_view program) {
   out += "  --mine-blocks <n>          Mine n blocks after genesis (default: 0)\n";
   out += "  --mine-after-tx <n>        Relay: mine n blocks after each tx announce (default: 0)\n";
   out += "  --relay-max-sessions <n>   Relay server: serve n sequential peers (default: 1)\n";
+  out += "  --announce-tx-file <path>  Relay client: announce tx from file (repeatable)\n";
+  out += "  --relay-blocks-after-tx <n> Relay client: pull n blocks after tx announce (default: 0)\n";
   out += "  --block-subsidy <amount>   Coinbase subsidy per block (default: protocol)\n";
   out += "  --coinbase-maturity <n>    Blocks before a coinbase may be spent (default: protocol)\n";
   out += "  --coinbase-recipient <hex> 64-char hex payout address (default: zero)\n";

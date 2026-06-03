@@ -8,6 +8,8 @@
 #include "blockchain/net/p2p_payloads.hpp"
 #include "blockchain/net/socket_io.hpp"
 #include "blockchain/node/peer_state.hpp"
+#include "blockchain/protocol/constants.hpp"
+#include "blockchain/serialization/byte_io.hpp"
 
 namespace blockchain::node {
 namespace {
@@ -406,6 +408,48 @@ Result<void> run_ping_client(const NodeConfig& config) {
     return make_error(ErrorCode::kInvalidMessage, "pong nonce does not match ping");
   }
   return {};
+}
+
+Result<protocol::Transaction> load_transaction_file(const std::string& path) {
+  std::ifstream input(path, std::ios::binary | std::ios::ate);
+  if (!input) {
+    return make_error(ErrorCode::kInvalidConfig, "cannot open transaction file: " + path);
+  }
+  const auto size = input.tellg();
+  if (size < 0) {
+    return make_error(ErrorCode::kInvalidConfig, "cannot read transaction file size: " + path);
+  }
+  if (static_cast<std::uint64_t>(size) > protocol::kMaxTransactionSizeBytes) {
+    return make_error(ErrorCode::kResourceLimitExceeded,
+                      "transaction file exceeds max size: " + path);
+  }
+  if (size == 0) {
+    return make_error(ErrorCode::kInvalidTransaction, "transaction file is empty: " + path);
+  }
+
+  std::vector<std::byte> bytes(static_cast<std::size_t>(size));
+  input.seekg(0, std::ios::beg);
+  input.read(reinterpret_cast<char*>(bytes.data()), size);
+  if (!input) {
+    return make_error(ErrorCode::kInvalidConfig, "failed to read transaction file: " + path);
+  }
+
+  serialization::ByteReader reader(bytes);
+  return protocol::Transaction::deserialize(reader);
+}
+
+Result<RelayClientOptions> relay_client_options_from_config(const NodeConfig& config) {
+  RelayClientOptions options;
+  options.blocks_after_tx = config.relay_blocks_after_tx;
+  options.txs_after_sync.reserve(config.announce_tx_files.size());
+  for (const auto& path : config.announce_tx_files) {
+    auto tx = load_transaction_file(path);
+    if (!tx) {
+      return std::unexpected(tx.error());
+    }
+    options.txs_after_sync.push_back(std::move(*tx));
+  }
+  return options;
 }
 
 }  // namespace blockchain::node

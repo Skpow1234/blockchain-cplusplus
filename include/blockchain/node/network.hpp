@@ -77,6 +77,12 @@ struct RelayServerResult {
 [[nodiscard]] Result<RelayClientResult> run_relay_client(const NodeConfig& config,
                                                          const RelayClientOptions& options = {});
 
+// Loads a canonical transaction from a file (bounded by kMaxTransactionSizeBytes).
+[[nodiscard]] Result<protocol::Transaction> load_transaction_file(const std::string& path);
+
+// Builds relay client options from config (loads --announce-tx-file paths).
+[[nodiscard]] Result<RelayClientOptions> relay_client_options_from_config(const NodeConfig& config);
+
 }  // namespace blockchain::node
 
 #endif  // BLOCKCHAIN_NODE_NETWORK_HPP

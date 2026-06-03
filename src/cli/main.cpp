@@ -55,7 +55,12 @@ int run(const std::vector<std::string>& args, std::string_view program) {
       return 0;
     }
     if (relay) {
-      auto ok = blockchain::node::run_relay_client(*config);
+      auto options = blockchain::node::relay_client_options_from_config(*config);
+      if (!options) {
+        std::cerr << "configuration error: " << options.error().message << "\n";
+        return 2;
+      }
+      auto ok = blockchain::node::run_relay_client(*config, *options);
       if (!ok) {
         std::cerr << "network error: " << ok.error().message << "\n";
         return 1;

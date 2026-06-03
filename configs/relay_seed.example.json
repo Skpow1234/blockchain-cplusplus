@@ -9,6 +9,7 @@
   "coinbase_recipient_hex": "a100000000000000000000000000000000000000000000000000000000000000",
   "network_mode": "relay",
   "mine_blocks": 2,
+  "relay_max_sessions": 2,
   "listen_host": "127.0.0.1",
   "listen_port": 0,
   "persist": false,

@@ -34,6 +34,8 @@ struct NodeConfig {
   std::uint32_t max_block_size_bytes = 0;  // 0 => use protocol default
   std::uint32_t mine_blocks = 0;
   std::uint32_t mine_after_tx = 0;
+  // Relay client: after announcing txs, request this many additional blocks.
+  std::uint32_t relay_blocks_after_tx = 0;
   // Relay server: accept and serve this many sequential peer connections (>= 1).
   std::uint32_t relay_max_sessions = 1;
   std::uint32_t coinbase_maturity = 0;
@@ -53,6 +55,8 @@ struct NodeConfig {
   std::string peer_host;
   // When set, the bound TCP port is written here after listen (for multi-process tests).
   std::string port_file;
+  // Relay client: canonical transaction files to announce after block sync.
+  std::vector<std::string> announce_tx_files;
 
   // Validates the configuration, returning a descriptive error on failure.
   [[nodiscard]] Result<void> validate() const;

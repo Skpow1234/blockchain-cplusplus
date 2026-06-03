@@ -118,3 +118,14 @@ TEST_CASE("listen and peer together are rejected") {
   CHECK(!config.has_value());
   CHECK(config.error().code == ErrorCode::kInvalidConfig);
 }
+
+TEST_CASE("relay client tx flags are parsed") {
+  auto config = parse_args({"--peer", "127.0.0.1:9000", "--network-mode", "relay",
+                            "--announce-tx-file", "a.tx", "--announce-tx-file", "b.tx",
+                            "--relay-blocks-after-tx", "1"});
+  CHECK(config.has_value());
+  CHECK_EQ(config->relay_blocks_after_tx, static_cast<std::uint32_t>(1));
+  CHECK_EQ(config->announce_tx_files.size(), static_cast<std::size_t>(2));
+  CHECK_EQ(config->announce_tx_files[0], std::string("a.tx"));
+  CHECK_EQ(config->announce_tx_files[1], std::string("b.tx"));
+}
