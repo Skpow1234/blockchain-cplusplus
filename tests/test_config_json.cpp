@@ -74,11 +74,9 @@ TEST_CASE("CLI overrides JSON config file values") {
 
 TEST_CASE("load_config_file reads from disk") {
   const std::string path = "test_config_json_on_disk.json";
-  write_text(path, R"json({
-    "node_id": "disk-node",
-    "data_dir": "./data/disk",
-    "log_level": "warn"
-  })json");
+  write_text(path,
+             "{\"node_id\": \"disk-node\", \"data_dir\": \"./data/disk\", \"log_level\": "
+             "\"warn\"}");
 
   auto config = load_config_file(path);
   CHECK(config.has_value());
