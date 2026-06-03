@@ -164,24 +164,26 @@ namespace {
 
 }  // namespace
 
+Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket, PeerState& state) {
+  if (auto hs = serve_relay_handshake(socket, state); !hs) {
+    return std::unexpected(hs.error());
+  }
+  if (auto loop = relay_message_loop(socket, state); !loop) {
+    return std::unexpected(loop.error());
+  }
+  if (auto saved = state.persist_ledger(); !saved) {
+    return std::unexpected(saved.error());
+  }
+  return make_relay_summary(state);
+}
+
 Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
                                                    const NodeConfig& config) {
   auto state = PeerState::from_config(config);
   if (!state) {
     return std::unexpected(state.error());
   }
-  if (auto hs = serve_relay_handshake(socket, *state); !hs) {
-    return std::unexpected(hs.error());
-  }
-  if (auto loop = relay_message_loop(socket, *state); !loop) {
-    return std::unexpected(loop.error());
-  }
-  if (config.persist) {
-    if (auto saved = state->persist_ledger(); !saved) {
-      return std::unexpected(saved.error());
-    }
-  }
-  return make_relay_summary(*state);
+  return serve_relay_connection(socket, *state);
 }
 
 Result<RelayServerResult> run_relay_server(const NodeConfig& config,
@@ -200,13 +202,18 @@ Result<RelayServerResult> run_relay_server(const NodeConfig& config,
     return std::unexpected(listener.error());
   }
 
+  auto state = PeerState::from_config(config);
+  if (!state) {
+    return std::unexpected(state.error());
+  }
+
   RelayServerResult result;
   for (std::uint32_t n = 0; n < max_sessions; ++n) {
     auto client = listener->accept();
     if (!client) {
       return std::unexpected(client.error());
     }
-    auto session = serve_relay_connection(*client, config);
+    auto session = serve_relay_connection(*client, *state);
     if (!session) {
       return std::unexpected(session.error());
     }

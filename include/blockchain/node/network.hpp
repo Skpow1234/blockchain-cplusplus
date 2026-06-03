@@ -8,6 +8,7 @@
 #include "blockchain/error.hpp"
 #include "blockchain/net/socket_io.hpp"
 #include "blockchain/node/config.hpp"
+#include "blockchain/node/peer_state.hpp"
 #include "blockchain/protocol/transaction.hpp"
 
 namespace blockchain::node {
@@ -55,6 +56,11 @@ struct RelayServerResult {
   RelaySessionSummary last_session;
 };
 
+// Serves one peer using existing chain/mempool state (shared across server sessions).
+[[nodiscard]] Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
+                                                                 PeerState& state);
+
+// Bootstraps state from config, serves one peer, then discards state.
 [[nodiscard]] Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
                                                                  const NodeConfig& config);
 

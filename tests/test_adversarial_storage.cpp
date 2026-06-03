@@ -159,6 +159,55 @@ TEST_CASE("peer state restore fails when ledger is missing") {
   CHECK(state.error().code == ErrorCode::kInvalidConfig);
 }
 
+TEST_CASE("load rejects truncated ledger file") {
+  const std::string dir = temp_data_dir();
+  NodeConfig config;
+  const Block genesis = build_genesis_block(config);
+
+  ChainStore store(dir);
+  auto encoded = ChainStore::encode_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{});
+  CHECK(encoded.has_value());
+
+  write_bytes(ChainStore::ledger_path(dir),
+              std::span<const std::byte>(encoded->data(), encoded->size() / 2));
+
+  CHECK(store.ledger_exists());
+  auto err = store.load_chain();
+  CHECK(!err.has_value());
+  CHECK(err.error().code == ErrorCode::kStorageCorruption);
+}
+
+TEST_CASE("load ignores incomplete temp when canonical ledger exists") {
+  const std::string dir = temp_data_dir();
+  NodeConfig config;
+  const Block genesis = build_genesis_block(config);
+
+  ChainStore store(dir);
+  CHECK(store.save_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{}).has_value());
+
+  auto encoded = ChainStore::encode_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{});
+  CHECK(encoded.has_value());
+  write_bytes(ChainStore::ledger_temp_path(dir),
+              std::span<const std::byte>(encoded->data(), encoded->size() / 2));
+
+  auto chain = store.load_chain();
+  CHECK(chain.has_value());
+  CHECK_EQ(chain->height(), static_cast<std::uint32_t>(0));
+}
+
+TEST_CASE("decode rejects trailing bytes after checksum") {
+  NodeConfig config;
+  const Block genesis = build_genesis_block(config);
+  auto encoded = ChainStore::encode_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{});
+  CHECK(encoded.has_value());
+  encoded->push_back(std::byte{0xFF});
+
+  auto err =
+      ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
+  CHECK(!err.has_value());
+  CHECK(err.error().code == ErrorCode::kStorageCorruption);
+}
+
 TEST_CASE("incomplete temp ledger is not loaded as canonical state") {
   const std::string dir = temp_data_dir();
   NodeConfig config;
