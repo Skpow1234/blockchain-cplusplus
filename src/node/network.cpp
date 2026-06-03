@@ -104,22 +104,20 @@ namespace {
   return net::send_message(socket, *outbound);
 }
 
-[[nodiscard]] Result<void> exchange_relay_handshake(net::TcpSocket& socket, const PeerState& state) {
+[[nodiscard]] Result<net::HandshakePayload> exchange_relay_handshake(net::TcpSocket& socket,
+                                                                    const PeerState& state) {
   auto outbound = net::make_handshake_message(state.local_handshake());
   if (!outbound) {
     return std::unexpected(outbound.error());
   }
   if (auto sent = net::send_message(socket, *outbound); !sent) {
-    return sent;
+    return std::unexpected(sent.error());
   }
   auto inbound = net::recv_message(socket);
   if (!inbound) {
     return std::unexpected(inbound.error());
   }
-  if (auto peer = net::parse_handshake_message(*inbound); !peer) {
-    return std::unexpected(peer.error());
-  }
-  return {};
+  return net::parse_handshake_message(*inbound);
 }
 
 [[nodiscard]] bool peer_disconnected(const Error& err) noexcept {
@@ -153,7 +151,10 @@ Result<void> serve_relay_connection(net::TcpSocket& socket, const NodeConfig& co
   if (auto hs = serve_relay_handshake(socket, *state); !hs) {
     return hs;
   }
-  return relay_message_loop(socket, *state);
+  if (auto loop = relay_message_loop(socket, *state); !loop) {
+    return loop;
+  }
+  return {};
 }
 
 Result<void> run_relay_server(const NodeConfig& config) {
@@ -186,11 +187,12 @@ Result<void> run_relay_client(const NodeConfig& config) {
   if (!state) {
     return std::unexpected(state.error());
   }
-  if (auto hs = exchange_relay_handshake(*socket, *state); !hs) {
-    return hs;
+  auto peer_hs = exchange_relay_handshake(*socket, *state);
+  if (!peer_hs) {
+    return std::unexpected(peer_hs.error());
   }
 
-  const std::uint32_t target_height = config.mine_blocks;
+  const std::uint32_t target_height = peer_hs->height;
   for (std::uint32_t h = state->height() + 1; h <= target_height; ++h) {
     auto request = net::make_block_request_message(net::BlockRequestPayload{.height = h});
     if (!request) {

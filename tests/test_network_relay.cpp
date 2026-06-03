@@ -40,7 +40,11 @@ TEST_CASE("relay client syncs a mined block from the server") {
     port.store(*bound);
 
     auto client = listener->accept();
-    if (!client || !serve_relay_connection(*client, server_config)) {
+    if (!client) {
+      server_failed.store(true);
+      return;
+    }
+    if (!serve_relay_connection(*client, server_config)) {
       server_failed.store(true);
     }
   });
@@ -53,7 +57,7 @@ TEST_CASE("relay client syncs a mined block from the server") {
   client_config.node_id = "relay-client";
   client_config.network_mode = NetworkMode::kRelay;
   client_config.genesis_timestamp = server_config.genesis_timestamp;
-  client_config.mine_blocks = 1;
+  client_config.mine_blocks = 0;
   client_config.peer_host = "127.0.0.1";
   client_config.peer_port = port.load();
 
