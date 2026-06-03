@@ -9,6 +9,7 @@ add_library(blockchain_core
   validation/block_validation.cpp
   mempool/mempool.cpp
   production/block_builder.cpp
+  consensus/chain.cpp
   node/config.cpp
   node/genesis.cpp)
 
