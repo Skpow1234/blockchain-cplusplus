@@ -40,8 +40,20 @@ Result<void> check_transaction_sanity(const protocol::Transaction& tx) {
     return make_error(ErrorCode::kInvalidTransaction, "too many outputs");
   }
 
+  // Only a well-formed coinbase may use the reserved null-prevout sentinel. Any
+  // other transaction that references it is malformed.
+  const bool coinbase = tx.is_coinbase();
+  if (!coinbase) {
+    for (const protocol::TxInput& input : tx.inputs) {
+      if (input.prevout.index == protocol::kNullPrevoutIndex) {
+        return make_error(ErrorCode::kInvalidTransaction,
+                          "non-coinbase input uses the reserved coinbase outpoint");
+      }
+    }
+  }
+
   // No duplicate inputs: spending the same outpoint twice in one transaction is
-  // invalid regardless of chain state.
+  // invalid regardless of chain state. (A coinbase has a single input.)
   std::set<protocol::OutPoint, state::OutPointLess> seen;
   for (const protocol::TxInput& input : tx.inputs) {
     if (!seen.insert(input.prevout).second) {
@@ -94,6 +106,24 @@ Result<std::uint64_t> check_transaction_inputs(const protocol::Transaction& tx,
   }
 
   return total_in - total_out;
+}
+
+Result<void> check_coinbase_maturity(const protocol::Transaction& tx, const state::UtxoSet& utxos,
+                                     std::uint32_t spend_height, std::uint32_t maturity) {
+  for (const protocol::TxInput& input : tx.inputs) {
+    const state::Coin* coin = utxos.find(input.prevout);
+    if (coin == nullptr || !coin->coinbase) {
+      continue;
+    }
+    // Compare in 64 bits so coin.height + maturity cannot overflow u32.
+    const std::uint64_t spendable_at =
+        static_cast<std::uint64_t>(coin->height) + static_cast<std::uint64_t>(maturity);
+    if (static_cast<std::uint64_t>(spend_height) < spendable_at) {
+      return make_error(ErrorCode::kInvalidTransaction,
+                        "immature coinbase spend of " + outpoint_str(input.prevout));
+    }
+  }
+  return {};
 }
 
 }  // namespace blockchain::validation

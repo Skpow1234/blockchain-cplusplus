@@ -27,6 +27,22 @@ inline constexpr std::uint32_t kMaxTransactionsPerBlock = 1U << 16U;
 // so that sums of outputs cannot overflow within policy limits.
 inline constexpr std::uint64_t kMaxMoney = 21'000'000ULL * 100'000'000ULL;
 
+// Smallest indivisible unit per coin (like satoshis). Purely a denomination
+// convention used by economic defaults below; it is not a consensus rule.
+inline constexpr std::uint64_t kCoinUnit = 100'000'000ULL;
+
+// Reserved output index that marks a coinbase input. A coinbase transaction has
+// exactly one input whose prevout.index equals this sentinel; that input does
+// not reference a real UTXO. The input's prevout.txid carries the block height
+// so that the coinbase id is unique per height (no scriptSig exists yet).
+inline constexpr std::uint32_t kNullPrevoutIndex = 0xFFFFFFFFU;
+
+// Economic consensus defaults. These are documented protocol parameters; the
+// runtime values are carried in consensus::ConsensusParams so simulations and
+// tests can override them deterministically without touching code.
+inline constexpr std::uint64_t kDefaultBlockSubsidy = 50ULL * kCoinUnit;
+inline constexpr std::uint32_t kDefaultCoinbaseMaturity = 100;
+
 }  // namespace blockchain::protocol
 
 #endif  // BLOCKCHAIN_PROTOCOL_CONSTANTS_HPP

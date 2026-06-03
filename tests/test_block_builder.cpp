@@ -89,13 +89,15 @@ TEST_CASE("template includes all fitting transactions and sums fees") {
   CHECK_EQ(tmpl->total_fees, static_cast<std::uint64_t>(910));
 }
 
-TEST_CASE("higher fee-rate transaction is ordered first") {
+TEST_CASE("coinbase is first and the highest fee-rate transaction follows") {
   const Fixture fx;
   const BlockHeader tip;
 
   auto tmpl = build_block_template(tip, 1000, fx.pool, fx.utxos, params(1U << 20U, 100));
   CHECK(tmpl.has_value());
-  CHECK(tmpl->block.transactions.front().txid() == fx.high.txid());
+  CHECK(tmpl->block.transactions.front().is_coinbase());
+  // The first *selected* (non-coinbase) transaction is the higher fee-rate one.
+  CHECK(tmpl->block.transactions.at(1).txid() == fx.high.txid());
 }
 
 TEST_CASE("count budget selects only the best transaction") {

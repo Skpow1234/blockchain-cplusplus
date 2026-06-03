@@ -34,7 +34,7 @@ namespace {
 
 }  // namespace
 
-Result<Chain> Chain::create(const protocol::Block& genesis) {
+Result<Chain> Chain::create(const protocol::Block& genesis, const ConsensusParams& params) {
   if (genesis.header.version != protocol::kBlockVersion) {
     return make_error(ErrorCode::kUnsupportedVersion, "unsupported genesis block version");
   }
@@ -49,10 +49,10 @@ Result<Chain> Chain::create(const protocol::Block& genesis) {
   }
 
   state::UtxoSet utxos;
-  if (auto connected = validation::connect_block(genesis, utxos); !connected) {
+  if (auto connected = validation::connect_block(genesis, utxos, params); !connected) {
     return std::unexpected<Error>(connected.error());
   }
-  return Chain(genesis.header, std::move(utxos));
+  return Chain(genesis.header, std::move(utxos), params);
 }
 
 Result<std::uint64_t> Chain::submit_block(const protocol::Block& block, mempool::Mempool* mempool) {
@@ -64,7 +64,7 @@ Result<std::uint64_t> Chain::submit_block(const protocol::Block& block, mempool:
   }
 
   // connect_block is all-or-nothing: utxos_ is only mutated on full success.
-  auto fees = validation::connect_block(block, utxos_);
+  auto fees = validation::connect_block(block, utxos_, params_);
   if (!fees) {
     return std::unexpected<Error>(fees.error());
   }

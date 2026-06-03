@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include "blockchain/consensus/params.hpp"
 #include "blockchain/error.hpp"
 #include "blockchain/protocol/block.hpp"
 #include "blockchain/state/utxo_set.hpp"
@@ -17,6 +18,7 @@ namespace blockchain::validation {
 //   * header.merkle_root equals the computed Merkle root of the transactions
 //   * no duplicate transactions (by txid) within the block
 //   * every transaction passes check_transaction_sanity
+//   * at most one coinbase, and if present it is the first transaction
 //
 // Returns kInvalidBlock for block-level problems, or the underlying
 // transaction error for a malformed contained transaction.
@@ -32,12 +34,19 @@ namespace blockchain::validation {
 // if the entire block is valid (no partial application on failure). Returns the
 // total fees collected (sum of per-transaction fees).
 //
-// Stage-1 notes: there is no coinbase/reward transaction yet, so a block's
-// transactions must spend pre-existing UTXOs; collected fees are returned but
-// not redistributed. Block *disconnect* (reorg) requires undo data and is a
-// planned follow-up.
-[[nodiscard]] Result<std::uint64_t> connect_block(const protocol::Block& block,
-                                                  state::UtxoSet& utxos);
+// Coinbase handling: if the block's first transaction is a coinbase, it mints
+// new coins. Its outputs may total at most `params.block_subsidy` plus the sum
+// of fees collected from the block's other transactions; the coinbase outputs
+// are recorded as coinbase coins (subject to maturity on later spends). A block
+// without a coinbase is still valid (its fees are simply not claimed). Spends
+// of existing coinbase outputs must satisfy `params.coinbase_maturity`.
+//
+// Stage-1 notes: the returned value is the total fees collected from
+// non-coinbase transactions. Block *disconnect* (reorg) requires undo data and
+// is a planned follow-up.
+[[nodiscard]] Result<std::uint64_t> connect_block(
+    const protocol::Block& block, state::UtxoSet& utxos,
+    const consensus::ConsensusParams& params = consensus::ConsensusParams{});
 
 }  // namespace blockchain::validation
 

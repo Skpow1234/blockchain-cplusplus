@@ -55,6 +55,12 @@ Result<void> Mempool::accept(const protocol::Transaction& tx, const state::UtxoS
     return sane;
   }
 
+  // Coinbase transactions are created by block producers, never relayed or
+  // pooled; they have no real inputs to validate here.
+  if (tx.is_coinbase()) {
+    return make_error(ErrorCode::kInvalidTransaction, "coinbase cannot enter the mempool");
+  }
+
   const crypto::Hash256 txid = tx.txid();
   if (by_txid_.find(txid) != by_txid_.end()) {
     return make_error(ErrorCode::kInvalidTransaction, "transaction already in mempool");

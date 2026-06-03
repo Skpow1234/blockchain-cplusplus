@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "blockchain/consensus/params.hpp"
+#include "blockchain/crypto/hash.hpp"
 #include "blockchain/error.hpp"
 #include "blockchain/mempool/mempool.hpp"
 #include "blockchain/protocol/block.hpp"
@@ -20,19 +22,27 @@ struct BlockTemplateParams {
   std::uint32_t version = 0;
   std::uint32_t max_block_size_bytes = 0;
   std::uint32_t max_transactions = 0;
+  // Consensus parameters governing the coinbase reward and maturity.
+  consensus::ConsensusParams consensus{};
+  // Destination for the coinbase output (block subsidy + collected fees).
+  crypto::Hash256 coinbase_recipient{};
 };
 
 struct BlockTemplate {
   protocol::Block block;
   std::uint64_t total_fees = 0;
+  // Number of *non-coinbase* transactions selected from the mempool.
   std::size_t selected_count = 0;
 };
 
 // Builds a block on top of `tip`, selecting transactions from `mempool` in
 // fee-rate order (highest first) while respecting the size and count budgets,
 // and validating each against `utxos` (so the candidate is internally
-// consistent). The resulting block links to the tip (prev = tip.hash(),
-// height = tip.height + 1) and carries the correct Merkle root.
+// consistent). Transactions that would spend an immature coinbase at the new
+// height are skipped. A coinbase paying subsidy + collected fees to
+// `params.coinbase_recipient` is placed first. The resulting block links to the
+// tip (prev = tip.hash(), height = tip.height + 1) and carries the correct
+// Merkle root.
 //
 // Invariant enforced here: the produced block always passes connect_block
 // against `utxos`. If that ever fails, an error is returned rather than

@@ -58,22 +58,27 @@ Result<BlockTemplate> build_block_template(const protocol::BlockHeader& tip,
   if (tip.height == UINT32_MAX) {
     return make_error(ErrorCode::kInvalidBlock, "chain height would overflow");
   }
+  const std::uint32_t height = tip.height + 1;
 
   protocol::Block block;
   block.header.version = params.version;
   block.header.prev_block = tip.hash();
-  block.header.height = tip.height + 1;
+  block.header.height = height;
   block.header.timestamp = timestamp;
 
-  // Base size: serialized header plus the (empty) transaction-count prefix.
+  // Reserve slot 0 for the coinbase. Its serialized size is independent of the
+  // (later finalized) reward value, so a placeholder gives an accurate budget.
+  block.transactions.push_back(
+      protocol::make_coinbase(height, params.consensus.block_subsidy, params.coinbase_recipient));
   block.header.merkle_root = crypto::zero_hash();
   std::size_t current_size = block.to_bytes().size();
 
   state::UtxoSet working = utxos;
   std::uint64_t total_fees = 0;
+  std::size_t selected = 0;
 
   for (const mempool::Mempool::Entry& entry : mempool.entries_by_feerate()) {
-    if (block.transactions.size() >= params.max_transactions) {
+    if (selected >= params.max_transactions) {
       break;
     }
     const std::size_t projected = current_size + static_cast<std::size_t>(entry.size_bytes);
@@ -85,7 +90,14 @@ Result<BlockTemplate> build_block_template(const protocol::BlockHeader& tip,
     if (!fee) {
       continue;  // not applicable against current candidate state
     }
-    if (!try_apply(entry.transaction, block.header.height, working)) {
+    // Do not select a transaction that spends an immature coinbase: it would
+    // make the whole block invalid at this height.
+    if (auto mature = validation::check_coinbase_maturity(entry.transaction, working, height,
+                                                          params.consensus.coinbase_maturity);
+        !mature) {
+      continue;
+    }
+    if (!try_apply(entry.transaction, height, working)) {
       continue;
     }
 
@@ -96,13 +108,22 @@ Result<BlockTemplate> build_block_template(const protocol::BlockHeader& tip,
     total_fees = new_fees;
     current_size = projected;
     block.transactions.push_back(entry.transaction);
+    ++selected;
   }
+
+  // Finalize the coinbase reward = subsidy + collected fees.
+  std::uint64_t reward = 0;
+  if (!checked_add(params.consensus.block_subsidy, total_fees, reward)) {
+    return make_error(ErrorCode::kInvalidBlock, "coinbase reward overflow");
+  }
+  block.transactions.front() =
+      protocol::make_coinbase(height, reward, params.coinbase_recipient);
 
   block.header.merkle_root = protocol::compute_merkle_root(block.transactions);
 
   // Producer invariant: the candidate must validate against the real UTXO set.
   state::UtxoSet verify = utxos;
-  auto connected = validation::connect_block(block, verify);
+  auto connected = validation::connect_block(block, verify, params.consensus);
   if (!connected) {
     return make_error(ErrorCode::kInvalidBlock,
                       "produced block failed validation: " + connected.error().message);
@@ -110,7 +131,7 @@ Result<BlockTemplate> build_block_template(const protocol::BlockHeader& tip,
 
   BlockTemplate result;
   result.total_fees = *connected;
-  result.selected_count = block.transactions.size();
+  result.selected_count = selected;
   result.block = std::move(block);
   return result;
 }

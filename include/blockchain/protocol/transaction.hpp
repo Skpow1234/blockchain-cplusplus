@@ -56,8 +56,19 @@ struct Transaction {
   // Transaction id = sha256d(canonical encoding).
   [[nodiscard]] crypto::Hash256 txid() const;
 
+  // True if this is a coinbase: exactly one input whose prevout.index is the
+  // reserved sentinel (kNullPrevoutIndex). A coinbase introduces new coins
+  // (block subsidy + fees) and has no real UTXO inputs.
+  [[nodiscard]] bool is_coinbase() const noexcept;
+
   [[nodiscard]] friend bool operator==(const Transaction&, const Transaction&) = default;
 };
+
+// Builds a canonical coinbase transaction for `height` paying `value` to
+// `recipient`. The block height is encoded into the (otherwise unused) coinbase
+// input so that coinbases at different heights have distinct ids.
+[[nodiscard]] Transaction make_coinbase(std::uint32_t height, std::uint64_t value,
+                                        const crypto::Hash256& recipient);
 
 }  // namespace blockchain::protocol
 

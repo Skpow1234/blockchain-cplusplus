@@ -96,4 +96,28 @@ crypto::Hash256 Transaction::txid() const {
   return crypto::sha256d(std::span<const std::byte>(bytes.data(), bytes.size()));
 }
 
+bool Transaction::is_coinbase() const noexcept {
+  return inputs.size() == 1 && inputs[0].prevout.index == kNullPrevoutIndex;
+}
+
+Transaction make_coinbase(std::uint32_t height, std::uint64_t value,
+                          const crypto::Hash256& recipient) {
+  Transaction tx;
+  TxInput input;
+  // Encode the height (little-endian) into the leading bytes of the otherwise
+  // unused coinbase outpoint txid to keep per-height coinbase ids distinct.
+  input.prevout.txid = crypto::Hash256{};
+  for (std::size_t i = 0; i < sizeof(height); ++i) {
+    input.prevout.txid[i] = static_cast<std::byte>((height >> (8U * i)) & 0xFFU);
+  }
+  input.prevout.index = kNullPrevoutIndex;
+  tx.inputs.push_back(input);
+
+  TxOutput output;
+  output.value = value;
+  output.recipient = recipient;
+  tx.outputs.push_back(output);
+  return tx;
+}
+
 }  // namespace blockchain::protocol

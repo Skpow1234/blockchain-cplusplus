@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <utility>
 
+#include "blockchain/consensus/params.hpp"
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/error.hpp"
 #include "blockchain/mempool/mempool.hpp"
@@ -40,13 +41,16 @@ class Chain {
   //   * carry the supported block version,
   //   * pass check_block_sanity, and
   //   * connect cleanly to an empty UTXO set.
-  // Returns kInvalidBlock / kUnsupportedVersion on violation.
-  [[nodiscard]] static Result<Chain> create(const protocol::Block& genesis);
+  // Returns kInvalidBlock / kUnsupportedVersion on violation. `params` governs
+  // the coinbase reward and maturity for this chain and all submitted blocks.
+  [[nodiscard]] static Result<Chain> create(const protocol::Block& genesis,
+                                            const ConsensusParams& params = ConsensusParams{});
 
   [[nodiscard]] const protocol::BlockHeader& tip() const noexcept { return tip_; }
   [[nodiscard]] std::uint32_t height() const noexcept { return tip_.height; }
   [[nodiscard]] crypto::Hash256 tip_hash() const { return tip_.hash(); }
   [[nodiscard]] const state::UtxoSet& utxos() const noexcept { return utxos_; }
+  [[nodiscard]] const ConsensusParams& params() const noexcept { return params_; }
 
   // Connects `block` on top of the current tip. Performs, in order:
   //   1. contextual header-linking checks:
@@ -65,10 +69,12 @@ class Chain {
                                                    mempool::Mempool* mempool = nullptr);
 
  private:
-  Chain(protocol::BlockHeader tip, state::UtxoSet utxos) : tip_(tip), utxos_(std::move(utxos)) {}
+  Chain(protocol::BlockHeader tip, state::UtxoSet utxos, ConsensusParams params)
+      : tip_(tip), utxos_(std::move(utxos)), params_(params) {}
 
   protocol::BlockHeader tip_{};
   state::UtxoSet utxos_;
+  ConsensusParams params_{};
 };
 
 }  // namespace blockchain::consensus
