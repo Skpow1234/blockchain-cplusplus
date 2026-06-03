@@ -35,3 +35,6 @@ jobs:
 
       - name: Fuzz block deserialization
         run: ./build/fuzz/fuzz/fuzz_deserialize_block -max_total_time=30
+
+      - name: Fuzz P2P messages
+        run: ./build/fuzz/fuzz/fuzz_p2p_message -max_total_time=30
