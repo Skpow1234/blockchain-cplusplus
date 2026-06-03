@@ -41,3 +41,9 @@ jobs:
 
       - name: Fuzz P2P handshake payloads
         run: ./build/fuzz/fuzz/fuzz_p2p_handshake_payload -max_total_time=30
+
+      - name: Fuzz ledger decode
+        run: ./build/fuzz/fuzz/fuzz_decode_ledger -max_total_time=30
+
+      - name: Fuzz mempool admission
+        run: ./build/fuzz/fuzz/fuzz_mempool_admission -max_total_time=30

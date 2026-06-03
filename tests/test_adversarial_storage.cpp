@@ -17,6 +17,7 @@
 #include "blockchain/node/peer_state.hpp"
 #include "blockchain/protocol/block.hpp"
 #include "blockchain/protocol/constants.hpp"
+#include "blockchain/protocol/transaction.hpp"
 #include "blockchain/storage/chain_store.hpp"
 #include "testing.hpp"
 
@@ -27,6 +28,10 @@ using blockchain::node::build_genesis_block;
 using blockchain::node::NodeConfig;
 using blockchain::node::PeerState;
 using blockchain::protocol::Block;
+using blockchain::protocol::OutPoint;
+using blockchain::protocol::Transaction;
+using blockchain::protocol::TxInput;
+using blockchain::protocol::TxOutput;
 using blockchain::protocol::compute_merkle_root;
 using blockchain::protocol::kBlockVersion;
 using blockchain::storage::ChainStore;
@@ -229,4 +234,75 @@ TEST_CASE("incomplete temp ledger is not loaded as canonical state") {
   CHECK(!is_regular_file(ChainStore::ledger_path(dir)));
   auto err = store.load_chain();
   CHECK(!err.has_value());
+}
+
+TEST_CASE("peer state restore rejects ledger with invalid mempool transaction") {
+  const std::string dir = temp_data_dir();
+  NodeConfig config;
+  config.data_dir = dir;
+  config.genesis_timestamp = 42;
+  const Block genesis = build_genesis_block(config);
+
+  Transaction bad;
+  TxInput input;
+  input.prevout.txid.fill(std::byte{0xDE});
+  input.prevout.index = 0;
+  bad.inputs.push_back(input);
+  TxOutput output;
+  output.value = 1;
+  bad.outputs.push_back(output);
+
+  ChainStore store(dir);
+  CHECK(store.save_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{},
+                          std::span<const Transaction>(&bad, 1))
+            .has_value());
+
+  config.restore = true;
+  auto state = PeerState::from_config(config);
+  CHECK(!state.has_value());
+  CHECK(state.error().code == ErrorCode::kStorageCorruption);
+}
+
+TEST_CASE("decode rejects truncated v2 mempool section") {
+  NodeConfig config;
+  const Block genesis = build_genesis_block(config);
+
+  Transaction bad;
+  TxInput input;
+  input.prevout.txid.fill(std::byte{0xAB});
+  input.prevout.index = 0;
+  bad.inputs.push_back(input);
+  TxOutput output;
+  output.value = 1;
+  bad.outputs.push_back(output);
+
+  auto encoded = ChainStore::encode_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{},
+                                           std::span<const Transaction>(&bad, 1));
+  CHECK(encoded.has_value());
+
+  const std::size_t truncated_size = encoded->size() - 8;
+  auto err = ChainStore::decode_ledger(
+      std::span<const std::byte>(encoded->data(), truncated_size));
+  CHECK(!err.has_value());
+  CHECK(err.error().code == ErrorCode::kStorageCorruption);
+}
+
+TEST_CASE("decode rejects inflated mempool transaction count") {
+  NodeConfig config;
+  const Block genesis = build_genesis_block(config);
+  auto encoded = ChainStore::encode_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{});
+  CHECK(encoded.has_value());
+
+  std::vector<std::byte> body(encoded->begin(), encoded->end() - 4);
+  const std::size_t mempool_count_offset = body.size() - 4;
+  body[mempool_count_offset] = std::byte{0xFF};
+  body[mempool_count_offset + 1] = std::byte{0xFF};
+  body[mempool_count_offset + 2] = std::byte{0xFF};
+  body[mempool_count_offset + 3] = std::byte{0xFF};
+  *encoded = ChainStore::with_ledger_checksum(body);
+
+  auto err =
+      ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
+  CHECK(!err.has_value());
+  CHECK(err.error().code == ErrorCode::kStorageCorruption);
 }

@@ -53,7 +53,7 @@ jobs:
 
       - name: Run adversarial tests
         run: |
-          ctest --preset debug --output-on-failure -R 'adversarial|storage|network_relay|restart_integration|multinode_process'
+          ctest --preset debug --output-on-failure -R 'adversarial|storage|network_relay|restart_integration|multinode_process|stage3'
 
   benchmarks:
     name: benchmarks
