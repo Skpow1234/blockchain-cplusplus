@@ -53,7 +53,7 @@ Thumbs.db
 docs/DESIGN.md
 docs/
 
-test_multinode_*
+/test_multinode_*
 .local_network_run/
 
 test_storage_*
