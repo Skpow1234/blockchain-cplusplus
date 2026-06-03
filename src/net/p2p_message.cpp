@@ -47,8 +47,8 @@ void write_header_body(serialization::ByteWriter& writer, const P2pMessage& mess
 std::vector<std::byte> P2pMessage::to_bytes() const {
   serialization::ByteWriter writer;
   write_header_body(writer, *this);
-  writer.put_u32(checksum_of(
-      std::span<const std::byte>(writer.data().data(), writer.data().size())));
+  writer.put_u32(
+      checksum_of(std::span<const std::byte>(writer.data().data(), writer.data().size())));
   return writer.data();
 }
 

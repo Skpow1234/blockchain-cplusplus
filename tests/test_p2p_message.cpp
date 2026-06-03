@@ -117,7 +117,7 @@ TEST_CASE("oversized payload length is rejected without large allocation") {
   auto decoded = P2pMessage::deserialize(
       std::span<const std::byte>(writer.data().data(), writer.data().size()));
   CHECK(!decoded.has_value());
-  CHECK(decoded.error().code == ErrorCode::kParseError);
+  CHECK(decoded.error().code == ErrorCode::kResourceLimitExceeded);
 }
 
 TEST_CASE("truncated message is rejected") {
