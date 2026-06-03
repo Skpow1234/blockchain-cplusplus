@@ -1,0 +1,54 @@
+# Cursor IDE
+.cursorrules
+.cursor/
+
+# CMake build output
+build/
+out/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+
+# Compiled binaries and libraries
+*.exe
+*.out
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.lib
+*.pdb
+
+# Sanitizer / profiling output
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+
+# clang-tidy output
+.clang-tidy-cache/
+
+# Benchmark output
+benchmark_results/
+*.csv
+*.json.bench
+docs/baselines/current*.json
+
+# Editor artifacts
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+
+docs/DESIGN.md
