@@ -2,9 +2,9 @@
 
 #include <array>
 #include <charconv>
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
-#include <csignal>
 #include <span>
 #include <string>
 #include <vector>

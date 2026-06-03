@@ -1,7 +1,7 @@
 #include "blockchain/node/config_json.hpp"
 
-#include <charconv>
 #include <cctype>
+#include <charconv>
 #include <fstream>
 #include <string>
 #include <string_view>
@@ -64,8 +64,8 @@ struct JsonParser {
       return std::unexpected(ch.error());
     }
     if (*ch != expected) {
-      return make_error(ErrorCode::kInvalidConfig, std::string("expected '") + expected +
-                                                    "' in JSON config");
+      return make_error(ErrorCode::kInvalidConfig,
+                        std::string("expected '") + expected + "' in JSON config");
     }
     return {};
   }
@@ -258,7 +258,7 @@ struct JsonParser {
 }
 
 [[nodiscard]] Result<void> apply_uint_field(NodeConfig& config, std::string_view key,
-                                           std::uint64_t value) {
+                                            std::uint64_t value) {
   if (key == "genesis_timestamp") {
     config.genesis_timestamp = value;
     return {};
