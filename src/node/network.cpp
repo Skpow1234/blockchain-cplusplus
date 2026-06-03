@@ -124,6 +124,26 @@ namespace {
   return err.code == ErrorCode::kPeerMisbehavior && err.message.find("socket recv failed") != std::string::npos;
 }
 
+[[nodiscard]] Result<void> send_tx_announces(net::TcpSocket& socket,
+                                            std::span<const protocol::Transaction> txs) {
+  for (const protocol::Transaction& tx : txs) {
+    net::TxAnnouncePayload payload;
+    payload.tx_bytes = tx.to_bytes();
+    auto message = net::make_tx_announce_message(payload);
+    if (!message) {
+      return std::unexpected(message.error());
+    }
+    if (auto sent = net::send_message(socket, *message); !sent) {
+      return sent;
+    }
+  }
+  return {};
+}
+
+[[nodiscard]] RelaySessionSummary make_relay_summary(const PeerState& state) {
+  return RelaySessionSummary{.height = state.height(), .mempool_size = state.mempool_size()};
+}
+
 [[nodiscard]] Result<void> relay_message_loop(net::TcpSocket& socket, PeerState& state) {
   constexpr std::size_t kMaxRelayMessages = 64;
   for (std::size_t i = 0; i < kMaxRelayMessages; ++i) {
@@ -143,21 +163,22 @@ namespace {
 
 }  // namespace
 
-Result<void> serve_relay_connection(net::TcpSocket& socket, const NodeConfig& config) {
+Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
+                                                 const NodeConfig& config) {
   auto state = PeerState::from_config(config);
   if (!state) {
     return std::unexpected(state.error());
   }
   if (auto hs = serve_relay_handshake(socket, *state); !hs) {
-    return hs;
+    return std::unexpected(hs.error());
   }
   if (auto loop = relay_message_loop(socket, *state); !loop) {
-    return loop;
+    return std::unexpected(loop.error());
   }
-  return {};
+  return make_relay_summary(*state);
 }
 
-Result<void> run_relay_server(const NodeConfig& config) {
+Result<RelaySessionSummary> run_relay_server(const NodeConfig& config) {
   net::SocketLibrary lib;
   net::TcpEndpoint endpoint{.host = config.listen_host, .port = config.listen_port};
 
@@ -174,7 +195,8 @@ Result<void> run_relay_server(const NodeConfig& config) {
   return serve_relay_connection(*client, config);
 }
 
-Result<void> run_relay_client(const NodeConfig& config) {
+Result<RelayClientResult> run_relay_client(const NodeConfig& config,
+                                           const RelayClientOptions& options) {
   net::SocketLibrary lib;
   net::TcpEndpoint endpoint{.host = config.peer_host, .port = config.peer_port};
 
@@ -199,14 +221,14 @@ Result<void> run_relay_client(const NodeConfig& config) {
       return std::unexpected(request.error());
     }
     if (auto sent = net::send_message(*socket, *request); !sent) {
-      return sent;
+      return std::unexpected(sent.error());
     }
     auto inbound = net::recv_message(*socket);
     if (!inbound) {
       return std::unexpected(inbound.error());
     }
     if (auto ok = state->handle_message(*inbound, *socket); !ok) {
-      return ok;
+      return std::unexpected(ok.error());
     }
   }
 
@@ -214,7 +236,14 @@ Result<void> run_relay_client(const NodeConfig& config) {
     return make_error(ErrorCode::kInvalidBlock,
                       "relay client did not reach target height " + std::to_string(target_height));
   }
-  return {};
+
+  if (!options.txs_after_sync.empty()) {
+    if (auto sent = send_tx_announces(*socket, options.txs_after_sync); !sent) {
+      return std::unexpected(sent.error());
+    }
+  }
+
+  return RelayClientResult{.height = state->height(), .tip_hash = state->tip_hash()};
 }
 
 Result<void> run_ping_server(const NodeConfig& config) {

@@ -116,6 +116,10 @@ void PeerState::store_block(std::uint32_t height, protocol::Block block) {
   catalog_[height] = std::move(block);
 }
 
+bool PeerState::mempool_contains(const crypto::Hash256& txid) const {
+  return mempool_.contains(txid);
+}
+
 const protocol::Block* PeerState::block_at_height(std::uint32_t height) const noexcept {
   const auto it = catalog_.find(height);
   if (it == catalog_.end()) {
@@ -149,6 +153,13 @@ Result<protocol::Transaction> PeerState::parse_transaction_bytes(
   return *tx;
 }
 
+Result<void> PeerState::accept_transaction(const protocol::Transaction& tx) {
+  if (auto sanity = validation::check_transaction_sanity(tx); !sanity) {
+    return std::unexpected(sanity.error());
+  }
+  return mempool_.accept(tx, chain_.utxos());
+}
+
 Result<void> PeerState::on_tx_announce(std::span<const std::byte> payload_bytes) {
   auto parsed = net::deserialize_tx_announce(payload_bytes);
   if (!parsed) {
@@ -159,10 +170,7 @@ Result<void> PeerState::on_tx_announce(std::span<const std::byte> payload_bytes)
   if (!tx) {
     return std::unexpected(tx.error());
   }
-  if (auto sanity = validation::check_transaction_sanity(*tx); !sanity) {
-    return std::unexpected(sanity.error());
-  }
-  return mempool_.accept(*tx, chain_.utxos());
+  return accept_transaction(*tx);
 }
 
 Result<void> PeerState::on_block_announce(std::span<const std::byte> payload_bytes) {

@@ -25,21 +25,35 @@ int run(const std::vector<std::string>& args, std::string_view program) {
   if (blockchain::node::network_mode_enabled(*config)) {
     const bool relay = config->network_mode == blockchain::node::NetworkMode::kRelay;
     if (config->listen_port != 0) {
-      auto ok = relay ? blockchain::node::run_relay_server(*config)
-                      : blockchain::node::run_ping_server(*config);
-      if (!ok) {
-        std::cerr << "network error: " << ok.error().message << "\n";
-        return 1;
+      if (relay) {
+        auto ok = blockchain::node::run_relay_server(*config);
+        if (!ok) {
+          std::cerr << "network error: " << ok.error().message << "\n";
+          return 1;
+        }
+      } else {
+        auto ok = blockchain::node::run_ping_server(*config);
+        if (!ok) {
+          std::cerr << "network error: " << ok.error().message << "\n";
+          return 1;
+        }
       }
       std::cout << (relay ? "relay server" : "ping server") << " completed on "
                 << config->listen_host << ":" << config->listen_port << "\n";
       return 0;
     }
-    auto ok = relay ? blockchain::node::run_relay_client(*config)
-                    : blockchain::node::run_ping_client(*config);
-    if (!ok) {
-      std::cerr << "network error: " << ok.error().message << "\n";
-      return 1;
+    if (relay) {
+      auto ok = blockchain::node::run_relay_client(*config);
+      if (!ok) {
+        std::cerr << "network error: " << ok.error().message << "\n";
+        return 1;
+      }
+    } else {
+      auto ok = blockchain::node::run_ping_client(*config);
+      if (!ok) {
+        std::cerr << "network error: " << ok.error().message << "\n";
+        return 1;
+      }
     }
     std::cout << (relay ? "relay client" : "ping client") << " completed ("
               << config->peer_host << ":" << config->peer_port << ")\n";

@@ -1,9 +1,14 @@
 #ifndef BLOCKCHAIN_NODE_NETWORK_HPP
 #define BLOCKCHAIN_NODE_NETWORK_HPP
 
+#include <span>
+#include <vector>
+
+#include "blockchain/crypto/hash.hpp"
 #include "blockchain/error.hpp"
 #include "blockchain/net/socket_io.hpp"
 #include "blockchain/node/config.hpp"
+#include "blockchain/protocol/transaction.hpp"
 
 namespace blockchain::node {
 
@@ -22,11 +27,29 @@ namespace blockchain::node {
 
 // Relay mode: chain-aware handshake plus block request/response sync and tx/block
 // relay handling. Uses --mine-blocks on the server to publish blocks to peers.
-[[nodiscard]] Result<void> serve_relay_connection(net::TcpSocket& socket, const NodeConfig& config);
 
-[[nodiscard]] Result<void> run_relay_server(const NodeConfig& config);
+struct RelaySessionSummary {
+  std::uint32_t height = 0;
+  std::size_t mempool_size = 0;
+};
 
-[[nodiscard]] Result<void> run_relay_client(const NodeConfig& config);
+struct RelayClientResult {
+  std::uint32_t height = 0;
+  crypto::Hash256 tip_hash{};
+};
+
+struct RelayClientOptions {
+  // Transactions to announce on the wire after block sync completes.
+  std::vector<protocol::Transaction> txs_after_sync;
+};
+
+[[nodiscard]] Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
+                                                                 const NodeConfig& config);
+
+[[nodiscard]] Result<RelaySessionSummary> run_relay_server(const NodeConfig& config);
+
+[[nodiscard]] Result<RelayClientResult> run_relay_client(
+    const NodeConfig& config, const RelayClientOptions& options = {});
 
 }  // namespace blockchain::node
 

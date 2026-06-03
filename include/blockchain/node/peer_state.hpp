@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "blockchain/consensus/chain.hpp"
-#include "blockchain/consensus/params.hpp"
+#include "blockchain/crypto/hash.hpp"
 #include "blockchain/error.hpp"
 #include "blockchain/mempool/mempool.hpp"
 #include "blockchain/net/p2p_message.hpp"
@@ -26,10 +26,16 @@ class PeerState {
 
   [[nodiscard]] net::HandshakePayload local_handshake() const;
   [[nodiscard]] std::uint32_t height() const noexcept { return chain_.height(); }
+  [[nodiscard]] crypto::Hash256 tip_hash() const { return chain_.tip_hash(); }
+  [[nodiscard]] std::size_t mempool_size() const noexcept { return mempool_.size(); }
+  [[nodiscard]] bool mempool_contains(const crypto::Hash256& txid) const;
 
   // Processes one inbound P2P message. May send zero or more replies on `socket`.
   // Returns an error when the message is malformed or violates protocol rules.
   [[nodiscard]] Result<void> handle_message(const net::P2pMessage& message, net::TcpSocket& socket);
+
+  // Validates and admits a transaction to the mempool against the current chain UTXO set.
+  [[nodiscard]] Result<void> accept_transaction(const protocol::Transaction& tx);
 
   // Looks up a block previously connected to this node's chain.
   [[nodiscard]] const protocol::Block* block_at_height(std::uint32_t height) const noexcept;
