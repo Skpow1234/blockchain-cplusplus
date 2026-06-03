@@ -55,7 +55,7 @@ TEST_CASE("parse_config_json rejects unknown keys") {
 }
 
 TEST_CASE("parse_config_json rejects trailing garbage") {
-  const std::string json = R"json({ "node_id": "x" }) trailingjson";
+  const std::string json = "{ \"node_id\": \"x\" }) trailing";
   auto config = parse_config_json(json);
   CHECK(!config.has_value());
 }
