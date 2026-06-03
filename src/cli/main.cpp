@@ -29,8 +29,8 @@ int run(const std::vector<std::string>& args, std::string_view program) {
         std::cerr << "network error: " << ok.error().message << "\n";
         return 1;
       }
-      std::cout << "ping server completed on " << config->listen_host << ":"
-                << config->listen_port << "\n";
+      std::cout << "ping server completed on " << config->listen_host << ":" << config->listen_port
+                << "\n";
       return 0;
     }
     auto ok = blockchain::node::run_ping_client(*config);

@@ -16,9 +16,7 @@ using blockchain::node::NodeConfig;
 using blockchain::node::run_ping_client;
 using blockchain::node::serve_ping_connection;
 
-namespace {
-
-}  // namespace
+namespace {}  // namespace
 
 TEST_CASE("localhost ping server and client exchange handshake and pong") {
   SocketLibrary lib;

@@ -8,5 +8,8 @@
   "mine_blocks": 0,
   "block_subsidy": 0,
   "coinbase_maturity": 0,
-  "coinbase_recipient_hex": ""
+  "coinbase_recipient_hex": "",
+  "listen_host": "127.0.0.1",
+  "listen_port": 0,
+  "peer": ""
 }

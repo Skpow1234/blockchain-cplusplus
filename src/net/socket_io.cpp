@@ -18,7 +18,9 @@
 #include <ws2tcpip.h>
 using NativeSocket = SOCKET;
 constexpr NativeSocket kInvalidSocket = INVALID_SOCKET;
-inline int socket_errno() { return WSAGetLastError(); }
+inline int socket_errno() {
+  return WSAGetLastError();
+}
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -26,7 +28,9 @@ inline int socket_errno() { return WSAGetLastError(); }
 #include <unistd.h>
 using NativeSocket = int;
 constexpr NativeSocket kInvalidSocket = -1;
-inline int socket_errno() { return errno; }
+inline int socket_errno() {
+  return errno;
+}
 #endif
 
 namespace blockchain::net {
@@ -40,7 +44,9 @@ std::intptr_t from_native(NativeSocket handle) {
   return static_cast<std::intptr_t>(handle);
 }
 
-bool is_valid(NativeSocket handle) { return handle != kInvalidSocket; }
+bool is_valid(NativeSocket handle) {
+  return handle != kInvalidSocket;
+}
 
 void close_native(NativeSocket handle) {
   if (!is_valid(handle)) {
@@ -81,8 +87,8 @@ void close_native(NativeSocket handle) {
   while (received < buffer.size()) {
     const auto chunk = buffer.subspan(received);
 #ifdef _WIN32
-    const int rc = recv(handle, reinterpret_cast<char*>(chunk.data()),
-                        static_cast<int>(chunk.size()), 0);
+    const int rc =
+        recv(handle, reinterpret_cast<char*>(chunk.data()), static_cast<int>(chunk.size()), 0);
 #else
     const auto rc = recv(handle, chunk.data(), chunk.size(), 0);
 #endif
@@ -136,8 +142,9 @@ Result<TcpEndpoint> parse_tcp_endpoint(std::string_view text) {
   }
   TcpEndpoint endpoint;
   endpoint.host = std::string(text.substr(0, colon));
-  auto port = std::from_chars(text.data() + static_cast<std::ptrdiff_t>(colon + 1),
-                            text.data() + static_cast<std::ptrdiff_t>(text.size()), endpoint.port);
+  auto port =
+      std::from_chars(text.data() + static_cast<std::ptrdiff_t>(colon + 1),
+                      text.data() + static_cast<std::ptrdiff_t>(text.size()), endpoint.port);
   if (port.ec != std::errc{} || port.ptr != text.data() + text.size()) {
     return make_error(ErrorCode::kInvalidConfig, "invalid peer port");
   }
@@ -162,9 +169,13 @@ TcpSocket& TcpSocket::operator=(TcpSocket&& other) noexcept {
   return *this;
 }
 
-TcpSocket::~TcpSocket() { close(); }
+TcpSocket::~TcpSocket() {
+  close();
+}
 
-bool TcpSocket::valid() const noexcept { return handle_ >= 0 && is_valid(to_native(handle_)); }
+bool TcpSocket::valid() const noexcept {
+  return handle_ >= 0 && is_valid(to_native(handle_));
+}
 
 void TcpSocket::close() noexcept {
   if (handle_ >= 0) {
@@ -257,7 +268,9 @@ TcpListener& TcpListener::operator=(TcpListener&& other) noexcept {
   return *this;
 }
 
-TcpListener::~TcpListener() { close(); }
+TcpListener::~TcpListener() {
+  close();
+}
 
 void TcpListener::close() noexcept {
   if (handle_ >= 0) {
@@ -326,8 +339,7 @@ Result<P2pMessage> recv_message(TcpSocket& socket) {
   if (!frame) {
     return std::unexpected(frame.error());
   }
-  return P2pMessage::deserialize(
-      std::span<const std::byte>(frame->data(), frame->size()));
+  return P2pMessage::deserialize(std::span<const std::byte>(frame->data(), frame->size()));
 }
 
 }  // namespace blockchain::net
