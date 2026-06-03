@@ -18,9 +18,9 @@ TEST_CASE("sha256 of 'abc'") {
 }
 
 TEST_CASE("sha256 of long message spanning multiple blocks") {
-  CHECK_EQ(to_hex(sha256(bctest::as_bytes(
-               "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"))),
-           "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
+  CHECK_EQ(
+      to_hex(sha256(bctest::as_bytes("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"))),
+      "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
 }
 
 TEST_CASE("sha256d equals sha256 of sha256") {

@@ -14,9 +14,9 @@ namespace {
   const char* end = begin + text.size();
   const auto [ptr, ec] = std::from_chars(begin, end, value);
   if (ec != std::errc{} || ptr != end) {
-    return make_error(ErrorCode::kInvalidConfig,
-                      std::string("invalid unsigned integer for ") + std::string(flag) + ": '" +
-                          std::string(text) + "'");
+    return make_error(ErrorCode::kInvalidConfig, std::string("invalid unsigned integer for ") +
+                                                     std::string(flag) + ": '" + std::string(text) +
+                                                     "'");
   }
   return value;
 }

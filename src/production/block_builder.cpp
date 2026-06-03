@@ -52,8 +52,7 @@ namespace {
 }  // namespace
 
 Result<BlockTemplate> build_block_template(const protocol::BlockHeader& tip,
-                                           std::uint64_t timestamp,
-                                           const mempool::Mempool& mempool,
+                                           std::uint64_t timestamp, const mempool::Mempool& mempool,
                                            const state::UtxoSet& utxos,
                                            const BlockTemplateParams& params) {
   if (tip.height == UINT32_MAX) {

@@ -88,9 +88,9 @@ Result<std::uint64_t> check_transaction_inputs(const protocol::Transaction& tx,
   }
 
   if (total_in < total_out) {
-    return make_error(ErrorCode::kInvalidTransaction,
-                      "outputs (" + std::to_string(total_out) + ") exceed inputs (" +
-                          std::to_string(total_in) + ")");
+    return make_error(ErrorCode::kInvalidTransaction, "outputs (" + std::to_string(total_out) +
+                                                          ") exceed inputs (" +
+                                                          std::to_string(total_in) + ")");
   }
 
   return total_in - total_out;

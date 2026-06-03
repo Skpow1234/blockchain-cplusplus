@@ -20,8 +20,7 @@ struct Hash256Less {
   [[nodiscard]] bool operator()(const crypto::Hash256& lhs,
                                 const crypto::Hash256& rhs) const noexcept {
     return std::lexicographical_compare(
-        lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
-        [](std::byte a, std::byte b) {
+        lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), [](std::byte a, std::byte b) {
           return std::to_integer<unsigned>(a) < std::to_integer<unsigned>(b);
         });
   }
@@ -63,8 +62,7 @@ class Mempool {
   //   * kInvalidTransaction       - failed sanity/consensus checks, duplicate,
   //                                 or conflicts with an in-mempool transaction
   //   * kResourceLimitExceeded    - would exceed count or byte limits
-  [[nodiscard]] Result<void> accept(const protocol::Transaction& tx,
-                                    const state::UtxoSet& utxos);
+  [[nodiscard]] Result<void> accept(const protocol::Transaction& tx, const state::UtxoSet& utxos);
 
   [[nodiscard]] bool contains(const crypto::Hash256& txid) const;
   [[nodiscard]] const Entry* find(const crypto::Hash256& txid) const;

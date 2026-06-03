@@ -25,8 +25,7 @@ double measure_ns_per_op(std::size_t iterations, Fn&& fn) {
     fn(i);
   }
   const auto end = Clock::now();
-  const auto total_ns =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+  const auto total_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   return static_cast<double>(total_ns) / static_cast<double>(iterations);
 }
 
@@ -47,8 +46,8 @@ int main() {
   constexpr std::size_t kIters = 200000;
 
   const std::string payload(1024, 'x');
-  const auto bytes = std::span<const std::byte>(
-      reinterpret_cast<const std::byte*>(payload.data()), payload.size());
+  const auto bytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(payload.data()),
+                                                payload.size());
 
   volatile std::size_t sink = 0;
 

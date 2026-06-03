@@ -16,9 +16,9 @@ const Coin* UtxoSet::find(const protocol::OutPoint& outpoint) const {
 Result<void> UtxoSet::add(const protocol::OutPoint& outpoint, const Coin& coin) {
   const auto [it, inserted] = coins_.try_emplace(outpoint, coin);
   if (!inserted) {
-    return make_error(ErrorCode::kInvalidStateTransition,
-                      "duplicate UTXO for outpoint " + crypto::to_hex(outpoint.txid) + ":" +
-                          std::to_string(outpoint.index));
+    return make_error(ErrorCode::kInvalidStateTransition, "duplicate UTXO for outpoint " +
+                                                              crypto::to_hex(outpoint.txid) + ":" +
+                                                              std::to_string(outpoint.index));
   }
   return {};
 }
@@ -26,9 +26,9 @@ Result<void> UtxoSet::add(const protocol::OutPoint& outpoint, const Coin& coin) 
 Result<Coin> UtxoSet::spend(const protocol::OutPoint& outpoint) {
   const auto it = coins_.find(outpoint);
   if (it == coins_.end()) {
-    return make_error(ErrorCode::kInvalidStateTransition,
-                      "spend of unknown outpoint " + crypto::to_hex(outpoint.txid) + ":" +
-                          std::to_string(outpoint.index));
+    return make_error(ErrorCode::kInvalidStateTransition, "spend of unknown outpoint " +
+                                                              crypto::to_hex(outpoint.txid) + ":" +
+                                                              std::to_string(outpoint.index));
   }
   Coin spent = it->second;
   coins_.erase(it);

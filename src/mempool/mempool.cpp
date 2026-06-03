@@ -80,8 +80,7 @@ Result<void> Mempool::accept(const protocol::Transaction& tx, const state::UtxoS
     return make_error(ErrorCode::kResourceLimitExceeded, "mempool transaction count limit reached");
   }
   // Guard the subtraction against unsigned underflow before comparing.
-  if (size_bytes > limits_.max_total_bytes ||
-      total_bytes_ > limits_.max_total_bytes - size_bytes) {
+  if (size_bytes > limits_.max_total_bytes || total_bytes_ > limits_.max_total_bytes - size_bytes) {
     return make_error(ErrorCode::kResourceLimitExceeded, "mempool byte limit reached");
   }
 

@@ -10,8 +10,8 @@
 
 using blockchain::mempool::Mempool;
 using blockchain::mempool::MempoolLimits;
-using blockchain::production::build_block_template;
 using blockchain::production::BlockTemplateParams;
+using blockchain::production::build_block_template;
 using blockchain::protocol::BlockHeader;
 using blockchain::protocol::OutPoint;
 using blockchain::protocol::Transaction;
@@ -42,8 +42,8 @@ Transaction spend_tx(std::uint8_t tag, std::uint64_t out_value) {
 }
 
 BlockTemplateParams params(std::uint32_t max_size, std::uint32_t max_txs) {
-  return BlockTemplateParams{.version = 1, .max_block_size_bytes = max_size,
-                             .max_transactions = max_txs};
+  return BlockTemplateParams{
+      .version = 1, .max_block_size_bytes = max_size, .max_transactions = max_txs};
 }
 
 // Builds a UTXO set funding outpoints (0x10,0) and (0x11,0) with 1000 each, and

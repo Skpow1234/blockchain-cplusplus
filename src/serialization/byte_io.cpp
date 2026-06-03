@@ -43,9 +43,9 @@ void ByteWriter::put_var_bytes(std::span<const std::byte> bytes) {
 
 Result<void> ByteReader::ensure(std::size_t count) const {
   if (count > remaining()) {
-    return make_error(ErrorCode::kParseError,
-                      "unexpected end of input: need " + std::to_string(count) + " byte(s), have " +
-                          std::to_string(remaining()));
+    return make_error(ErrorCode::kParseError, "unexpected end of input: need " +
+                                                  std::to_string(count) + " byte(s), have " +
+                                                  std::to_string(remaining()));
   }
   return {};
 }
@@ -63,9 +63,8 @@ Result<std::uint16_t> ByteReader::get_u16() {
   }
   std::uint16_t value = 0;
   value |= static_cast<std::uint16_t>(static_cast<std::uint8_t>(data_[pos_]));
-  value |= static_cast<std::uint16_t>(static_cast<std::uint16_t>(static_cast<std::uint8_t>(
-                                          data_[pos_ + 1]))
-                                      << 8U);
+  value |= static_cast<std::uint16_t>(
+      static_cast<std::uint16_t>(static_cast<std::uint8_t>(data_[pos_ + 1])) << 8U);
   pos_ += 2;
   return value;
 }

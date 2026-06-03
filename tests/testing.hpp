@@ -75,10 +75,10 @@ inline std::span<const std::byte> as_bytes(std::string_view text) {
 #define BCTEST_CONCAT2(a, b) a##b
 #define BCTEST_CONCAT(a, b) BCTEST_CONCAT2(a, b)
 
-#define TEST_CASE(name)                                                          \
-  static void BCTEST_CONCAT(bctest_fn_, __LINE__)();                             \
-  static ::bctest::Registrar BCTEST_CONCAT(bctest_reg_, __LINE__){               \
-      name, &BCTEST_CONCAT(bctest_fn_, __LINE__)};                              \
+#define TEST_CASE(name)                                            \
+  static void BCTEST_CONCAT(bctest_fn_, __LINE__)();               \
+  static ::bctest::Registrar BCTEST_CONCAT(bctest_reg_, __LINE__){ \
+      name, &BCTEST_CONCAT(bctest_fn_, __LINE__)};                 \
   static void BCTEST_CONCAT(bctest_fn_, __LINE__)()
 
 #define CHECK(cond) ::bctest::check((cond), #cond, __FILE__, __LINE__)

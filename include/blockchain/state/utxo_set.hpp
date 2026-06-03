@@ -18,11 +18,11 @@ struct OutPointLess {
   [[nodiscard]] bool operator()(const protocol::OutPoint& lhs,
                                 const protocol::OutPoint& rhs) const noexcept {
     if (lhs.txid != rhs.txid) {
-      return std::lexicographical_compare(
-          lhs.txid.begin(), lhs.txid.end(), rhs.txid.begin(), rhs.txid.end(),
-          [](std::byte a, std::byte b) {
-            return std::to_integer<unsigned>(a) < std::to_integer<unsigned>(b);
-          });
+      return std::lexicographical_compare(lhs.txid.begin(), lhs.txid.end(), rhs.txid.begin(),
+                                          rhs.txid.end(), [](std::byte a, std::byte b) {
+                                            return std::to_integer<unsigned>(a) <
+                                                   std::to_integer<unsigned>(b);
+                                          });
     }
     return lhs.index < rhs.index;
   }

@@ -57,8 +57,7 @@ struct Error {
   ErrorCode code;
   std::string message;
 
-  Error(ErrorCode error_code, std::string detail)
-      : code(error_code), message(std::move(detail)) {}
+  Error(ErrorCode error_code, std::string detail) : code(error_code), message(std::move(detail)) {}
 
   explicit Error(ErrorCode error_code)
       : code(error_code), message(std::string(to_string(error_code))) {}
