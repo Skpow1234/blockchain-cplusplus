@@ -5,6 +5,7 @@ add_library(blockchain_core
   protocol/transaction.cpp
   protocol/block.cpp
   state/utxo_set.cpp
+  validation/transaction_validation.cpp
   node/config.cpp
   node/genesis.cpp)
 
