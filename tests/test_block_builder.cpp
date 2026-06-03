@@ -107,19 +107,20 @@ TEST_CASE("count budget selects only the best transaction") {
   auto tmpl = build_block_template(tip, 1000, fx.pool, fx.utxos, params(1U << 20U, 1));
   CHECK(tmpl.has_value());
   CHECK_EQ(tmpl->selected_count, static_cast<std::size_t>(1));
-  CHECK(tmpl->block.transactions.front().txid() == fx.high.txid());
+  CHECK(tmpl->block.transactions.at(1).txid() == fx.high.txid());
   CHECK_EQ(tmpl->total_fees, static_cast<std::uint64_t>(900));
 }
 
 TEST_CASE("size budget selects only the best transaction") {
   const Fixture fx;
   const BlockHeader tip;
-  // Header(80) + count(4) = 84 base; each 1-in/1-out tx is 92 bytes.
-  // A 200-byte budget admits exactly one transaction (84 + 92 = 176).
-  auto tmpl = build_block_template(tip, 1000, fx.pool, fx.utxos, params(200, 100));
+  // Base = header(80) + count(4) + coinbase(92) = 176; each 1-in/1-out tx is 92
+  // bytes. A 300-byte budget admits exactly one more transaction (176 + 92 =
+  // 268 fits; a second would be 360 > 300).
+  auto tmpl = build_block_template(tip, 1000, fx.pool, fx.utxos, params(300, 100));
   CHECK(tmpl.has_value());
   CHECK_EQ(tmpl->selected_count, static_cast<std::size_t>(1));
-  CHECK(tmpl->block.transactions.front().txid() == fx.high.txid());
+  CHECK(tmpl->block.transactions.at(1).txid() == fx.high.txid());
 }
 
 TEST_CASE("produced block validates against the same UTXO set") {
