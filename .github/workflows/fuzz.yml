@@ -16,12 +16,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build clang lld
+          sudo apt-get install -y cmake ninja-build clang-18 libc++-18-dev libc++abi-18-dev
 
       - name: Configure fuzzers
+        # libFuzzer requires Clang; libc++ provides C++23 <expected>.
         env:
-          CC: clang
-          CXX: clang++
+          CC: clang-18
+          CXX: clang++-18
+          CXXFLAGS: -stdlib=libc++
+          LDFLAGS: -stdlib=libc++
         run: cmake --preset fuzz
 
       - name: Build fuzzers

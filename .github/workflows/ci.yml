@@ -29,12 +29,12 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build clang clang-tidy lld
+          sudo apt-get install -y cmake ninja-build g++-14
 
       - name: Configure
         env:
-          CC: clang
-          CXX: clang++
+          CC: gcc-14
+          CXX: g++-14
         run: cmake --preset ${{ matrix.preset }}
 
       - name: Build
@@ -68,13 +68,16 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build clang clang-tidy
+          sudo apt-get install -y cmake ninja-build clang-18 clang-tidy-18 clang-tools-18 libc++-18-dev libc++abi-18-dev
 
       - name: Configure
+        # Clang uses libc++ so that C++23 <expected> is available regardless of
+        # the system libstdc++ version.
         env:
-          CC: clang
-          CXX: clang++
+          CC: clang-18
+          CXX: clang++-18
+          CXXFLAGS: -stdlib=libc++
         run: cmake --preset debug
 
       - name: Run clang-tidy
-        run: run-clang-tidy -p build/debug -warnings-as-errors='*' "$(pwd)/src" "$(pwd)/include"
+        run: run-clang-tidy-18 -p build/debug -warnings-as-errors='*' "$(pwd)/src" "$(pwd)/include"
