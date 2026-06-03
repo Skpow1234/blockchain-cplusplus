@@ -39,8 +39,8 @@ constexpr std::uint64_t kRelayMempoolMaxBytes =
     const crypto::Hash256& recipient) {
   production::BlockTemplateParams params;
   params.version = protocol::kBlockVersion;
-  params.max_block_size_bytes = config.max_block_size_bytes != 0 ? config.max_block_size_bytes
-                                                                 : protocol::kMaxBlockSizeBytes;
+  params.max_block_size_bytes =
+      config.max_block_size_bytes != 0 ? config.max_block_size_bytes : protocol::kMaxBlockSizeBytes;
   params.max_transactions = protocol::kMaxTransactionsPerBlock;
   params.consensus = consensus;
   params.coinbase_recipient = recipient;
@@ -53,7 +53,8 @@ constexpr std::uint64_t kRelayMempoolMaxBytes =
 
 [[nodiscard]] Result<void> send_reject(net::TcpSocket& socket, net::RejectCode code,
                                        std::string_view reason) {
-  auto msg = net::make_reject_message(net::RejectPayload{.code = code, .reason = std::string(reason)});
+  auto msg =
+      net::make_reject_message(net::RejectPayload{.code = code, .reason = std::string(reason)});
   if (!msg) {
     return std::unexpected(msg.error());
   }
@@ -100,10 +101,9 @@ Result<PeerState> PeerState::from_config(const NodeConfig& config) {
     }
 
     mempool::Mempool pool(mempool::MempoolLimits{.max_transactions = kRelayMempoolMaxTransactions,
-                                               .max_total_bytes = kRelayMempoolMaxBytes});
-    PeerState state(std::move(*chain), std::move(pool), config.node_id,
-                    config.genesis_timestamp, consensus, tmpl_params, config.data_dir,
-                    config.persist, config.mine_after_tx);
+                                                 .max_total_bytes = kRelayMempoolMaxBytes});
+    PeerState state(std::move(*chain), std::move(pool), config.node_id, config.genesis_timestamp,
+                    consensus, tmpl_params, config.data_dir, config.persist, config.mine_after_tx);
     for (const protocol::Block& block : ledger->first) {
       state.store_block(block.header.height, block);
     }
@@ -190,8 +190,7 @@ Result<void> PeerState::connect_block(protocol::Block block) {
 
 Result<void> PeerState::mine_blocks(std::uint32_t count) {
   for (std::uint32_t n = 0; n < count; ++n) {
-    const std::uint64_t timestamp =
-        block_timestamp(genesis_timestamp_, chain_.height() + 1);
+    const std::uint64_t timestamp = block_timestamp(genesis_timestamp_, chain_.height() + 1);
     auto tmpl = production::build_block_template(chain_.tip(), timestamp, mempool_, chain_.utxos(),
                                                  tmpl_params_);
     if (!tmpl) {
@@ -297,8 +296,8 @@ Result<void> PeerState::handle_message(const net::P2pMessage& message, net::TcpS
       if (!parsed) {
         return std::unexpected(parsed.error());
       }
-      if (auto ok = on_tx_announce(std::span<const std::byte>(message.payload.data(),
-                                                              message.payload.size()));
+      if (auto ok = on_tx_announce(
+              std::span<const std::byte>(message.payload.data(), message.payload.size()));
           !ok) {
         (void)send_reject(socket, net::RejectCode::kInvalidMessage, ok.error().message);
         return ok;

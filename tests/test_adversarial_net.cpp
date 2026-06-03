@@ -16,19 +16,19 @@
 
 using blockchain::net::BlockRequestPayload;
 using blockchain::net::HandshakePayload;
+using blockchain::net::kNetworkMagic;
+using blockchain::net::make_block_request_message;
+using blockchain::net::make_handshake_message;
 using blockchain::net::P2pMessage;
 using blockchain::net::P2pMessageType;
+using blockchain::net::parse_reject_message;
+using blockchain::net::recv_message;
 using blockchain::net::RejectCode;
+using blockchain::net::send_message;
 using blockchain::net::SocketLibrary;
 using blockchain::net::TcpEndpoint;
 using blockchain::net::TcpListener;
 using blockchain::net::TcpSocket;
-using blockchain::net::kNetworkMagic;
-using blockchain::net::make_block_request_message;
-using blockchain::net::make_handshake_message;
-using blockchain::net::parse_reject_message;
-using blockchain::net::recv_message;
-using blockchain::net::send_message;
 using blockchain::node::NetworkMode;
 using blockchain::node::NodeConfig;
 using blockchain::node::serve_relay_connection;

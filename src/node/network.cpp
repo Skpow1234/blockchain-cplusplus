@@ -105,7 +105,7 @@ namespace {
 }
 
 [[nodiscard]] Result<net::HandshakePayload> exchange_relay_handshake(net::TcpSocket& socket,
-                                                                    const PeerState& state) {
+                                                                     const PeerState& state) {
   auto outbound = net::make_handshake_message(state.local_handshake());
   if (!outbound) {
     return std::unexpected(outbound.error());
@@ -121,11 +121,12 @@ namespace {
 }
 
 [[nodiscard]] bool peer_disconnected(const Error& err) noexcept {
-  return err.code == ErrorCode::kPeerMisbehavior && err.message.find("socket recv failed") != std::string::npos;
+  return err.code == ErrorCode::kPeerMisbehavior &&
+         err.message.find("socket recv failed") != std::string::npos;
 }
 
 [[nodiscard]] Result<void> send_tx_announces(net::TcpSocket& socket,
-                                            std::span<const protocol::Transaction> txs) {
+                                             std::span<const protocol::Transaction> txs) {
   for (const protocol::Transaction& tx : txs) {
     net::TxAnnouncePayload payload;
     payload.tx_bytes = tx.to_bytes();
@@ -164,7 +165,7 @@ namespace {
 }  // namespace
 
 Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
-                                                 const NodeConfig& config) {
+                                                   const NodeConfig& config) {
   auto state = PeerState::from_config(config);
   if (!state) {
     return std::unexpected(state.error());

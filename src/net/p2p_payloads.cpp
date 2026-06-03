@@ -54,8 +54,9 @@ namespace {
   return std::string(reinterpret_cast<const char*>(raw->data()), raw->size());
 }
 
-[[nodiscard]] Result<void> put_blob(serialization::ByteWriter& writer, std::span<const std::byte> bytes,
-                                    std::uint32_t max_len, std::string_view label) {
+[[nodiscard]] Result<void> put_blob(serialization::ByteWriter& writer,
+                                    std::span<const std::byte> bytes, std::uint32_t max_len,
+                                    std::string_view label) {
   if (bytes.empty()) {
     return make_error(ErrorCode::kInvalidMessage, std::string(label) + " must not be empty");
   }
@@ -68,8 +69,8 @@ namespace {
 }
 
 [[nodiscard]] Result<std::vector<std::byte>> get_blob(serialization::ByteReader& reader,
-                                                       std::uint32_t max_len,
-                                                       std::string_view label) {
+                                                      std::uint32_t max_len,
+                                                      std::string_view label) {
   auto raw = reader.get_var_bytes(max_len);
   if (!raw) {
     return std::unexpected(raw.error());

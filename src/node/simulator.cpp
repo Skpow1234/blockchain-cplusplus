@@ -41,8 +41,8 @@ constexpr std::uint64_t kSimulatorMempoolMaxBytes =
     const crypto::Hash256& recipient) {
   production::BlockTemplateParams params;
   params.version = protocol::kBlockVersion;
-  params.max_block_size_bytes = config.max_block_size_bytes != 0 ? config.max_block_size_bytes
-                                                                 : protocol::kMaxBlockSizeBytes;
+  params.max_block_size_bytes =
+      config.max_block_size_bytes != 0 ? config.max_block_size_bytes : protocol::kMaxBlockSizeBytes;
   params.max_transactions = protocol::kMaxTransactionsPerBlock;
   params.consensus = consensus;
   params.coinbase_recipient = recipient;
@@ -103,8 +103,7 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config) {
   ledger.push_back(genesis);
 
   for (std::uint32_t n = 0; n < config.mine_blocks; ++n) {
-    const std::uint64_t timestamp =
-        block_timestamp(config.genesis_timestamp, chain->height() + 1);
+    const std::uint64_t timestamp = block_timestamp(config.genesis_timestamp, chain->height() + 1);
     auto tmpl = production::build_block_template(chain->tip(), timestamp, pool, chain->utxos(),
                                                  tmpl_params);
     if (!tmpl) {

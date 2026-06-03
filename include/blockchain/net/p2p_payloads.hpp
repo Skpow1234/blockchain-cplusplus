@@ -93,7 +93,8 @@ struct TxAnnouncePayload {
   std::vector<std::byte> tx_bytes;
 };
 
-[[nodiscard]] Result<std::vector<std::byte>> serialize_tx_announce(const TxAnnouncePayload& payload);
+[[nodiscard]] Result<std::vector<std::byte>> serialize_tx_announce(
+    const TxAnnouncePayload& payload);
 [[nodiscard]] Result<TxAnnouncePayload> deserialize_tx_announce(std::span<const std::byte> bytes);
 
 [[nodiscard]] Result<P2pMessage> make_tx_announce_message(const TxAnnouncePayload& payload);
@@ -121,7 +122,8 @@ struct BlockRequestPayload {
 };
 
 [[nodiscard]] std::vector<std::byte> serialize_block_request(const BlockRequestPayload& payload);
-[[nodiscard]] Result<BlockRequestPayload> deserialize_block_request(std::span<const std::byte> bytes);
+[[nodiscard]] Result<BlockRequestPayload> deserialize_block_request(
+    std::span<const std::byte> bytes);
 
 [[nodiscard]] Result<P2pMessage> make_block_request_message(const BlockRequestPayload& payload);
 [[nodiscard]] Result<BlockRequestPayload> parse_block_request_message(const P2pMessage& message);

@@ -28,7 +28,7 @@ class ChainStore {
 
   // Writes ledger.bin atomically. `blocks` must be height-ordered from genesis.
   [[nodiscard]] Result<void> save_ledger(std::span<const protocol::Block> blocks,
-                                          const consensus::ConsensusParams& params);
+                                         const consensus::ConsensusParams& params);
 
   // Deserializes ledger.bin and rebuilds chain state by replaying every block.
   [[nodiscard]] Result<consensus::Chain> load_chain();

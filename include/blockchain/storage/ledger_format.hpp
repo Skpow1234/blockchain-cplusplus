@@ -27,8 +27,12 @@ inline constexpr std::uint32_t kLedgerFormatVersion = 1U;
 // Upper bound on blocks in one ledger file (resource limit, not a consensus rule).
 inline constexpr std::uint32_t kMaxLedgerBlocks = 1'000'000U;
 
-[[nodiscard]] constexpr const char* ledger_filename() noexcept { return "ledger.bin"; }
-[[nodiscard]] constexpr const char* ledger_temp_filename() noexcept { return "ledger.bin.tmp"; }
+[[nodiscard]] constexpr const char* ledger_filename() noexcept {
+  return "ledger.bin";
+}
+[[nodiscard]] constexpr const char* ledger_temp_filename() noexcept {
+  return "ledger.bin.tmp";
+}
 
 }  // namespace blockchain::storage
 

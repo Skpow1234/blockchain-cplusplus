@@ -29,8 +29,8 @@ using blockchain::consensus::Chain;
 using blockchain::consensus::ConsensusParams;
 using blockchain::mempool::Mempool;
 using blockchain::mempool::MempoolLimits;
-using blockchain::node::NodeConfig;
 using blockchain::node::build_genesis_block;
+using blockchain::node::NodeConfig;
 using blockchain::node::run_simulator;
 using blockchain::production::BlockTemplateParams;
 using blockchain::production::build_block_template;
@@ -73,7 +73,8 @@ TEST_CASE("ledger encode and decode round-trip") {
   CHECK(chain.has_value());
 
   Mempool pool(MempoolLimits{.max_transactions = 10, .max_total_bytes = 1U << 20U});
-  auto tmpl = build_block_template(chain->tip(), 100, pool, chain->utxos(), template_params(consensus));
+  auto tmpl =
+      build_block_template(chain->tip(), 100, pool, chain->utxos(), template_params(consensus));
   CHECK(tmpl.has_value());
   CHECK(chain->submit_block(tmpl->block).has_value());
 
@@ -81,8 +82,8 @@ TEST_CASE("ledger encode and decode round-trip") {
   auto encoded = ChainStore::encode_ledger(blocks, consensus);
   CHECK(encoded.has_value());
 
-  auto decoded = ChainStore::decode_ledger(
-      std::span<const std::byte>(encoded->data(), encoded->size()));
+  auto decoded =
+      ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
   CHECK(decoded.has_value());
   CHECK_EQ(decoded->first.size(), static_cast<std::size_t>(2));
   CHECK_EQ(decoded->second.block_subsidy, static_cast<std::uint64_t>(500));

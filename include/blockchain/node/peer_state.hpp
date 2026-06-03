@@ -48,9 +48,9 @@ class PeerState {
 
  private:
   PeerState(consensus::Chain chain, mempool::Mempool mempool, std::string node_id,
-              std::uint64_t genesis_timestamp, consensus::ConsensusParams consensus,
-              production::BlockTemplateParams tmpl_params, std::string data_dir, bool persist,
-              std::uint32_t mine_after_tx);
+            std::uint64_t genesis_timestamp, consensus::ConsensusParams consensus,
+            production::BlockTemplateParams tmpl_params, std::string data_dir, bool persist,
+            std::uint32_t mine_after_tx);
 
   [[nodiscard]] Result<void> connect_block(protocol::Block block);
   [[nodiscard]] std::vector<protocol::Block> ledger_blocks() const;

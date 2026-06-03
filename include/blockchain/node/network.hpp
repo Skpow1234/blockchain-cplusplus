@@ -50,8 +50,8 @@ struct RelayClientOptions {
 
 [[nodiscard]] Result<RelaySessionSummary> run_relay_server(const NodeConfig& config);
 
-[[nodiscard]] Result<RelayClientResult> run_relay_client(
-    const NodeConfig& config, const RelayClientOptions& options = {});
+[[nodiscard]] Result<RelayClientResult> run_relay_client(const NodeConfig& config,
+                                                         const RelayClientOptions& options = {});
 
 }  // namespace blockchain::node
 

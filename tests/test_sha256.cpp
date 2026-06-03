@@ -36,11 +36,10 @@ TEST_CASE("sha256 is deterministic") {
 }
 
 TEST_CASE("hash_from_hex round-trips to_hex") {
-  const auto hash = hash_from_hex(
-      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  const auto hash =
+      hash_from_hex("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
   CHECK(hash.has_value());
-  CHECK_EQ(to_hex(*hash),
-           "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  CHECK_EQ(to_hex(*hash), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 }
 
 TEST_CASE("hash_from_hex rejects invalid input") {

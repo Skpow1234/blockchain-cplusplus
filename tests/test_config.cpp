@@ -53,8 +53,8 @@ TEST_CASE("non-numeric integer is rejected") {
 }
 
 TEST_CASE("simulator flags are parsed") {
-  auto config = parse_args({"--mine-blocks", "3", "--block-subsidy", "5000",
-                            "--coinbase-maturity", "1", "--coinbase-recipient",
+  auto config = parse_args({"--mine-blocks", "3", "--block-subsidy", "5000", "--coinbase-maturity",
+                            "1", "--coinbase-recipient",
                             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"});
   CHECK(config.has_value());
   CHECK_EQ(config->mine_blocks, static_cast<std::uint32_t>(3));

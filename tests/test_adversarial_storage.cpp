@@ -23,9 +23,9 @@
 using blockchain::ErrorCode;
 using blockchain::consensus::ConsensusParams;
 using blockchain::crypto::zero_hash;
+using blockchain::node::build_genesis_block;
 using blockchain::node::NodeConfig;
 using blockchain::node::PeerState;
-using blockchain::node::build_genesis_block;
 using blockchain::protocol::Block;
 using blockchain::protocol::compute_merkle_root;
 using blockchain::protocol::kBlockVersion;
@@ -68,8 +68,8 @@ TEST_CASE("decode rejects wrong ledger magic") {
   CHECK(encoded.has_value());
   (*encoded)[0] = std::byte{0x00};
 
-  auto err = ChainStore::decode_ledger(
-      std::span<const std::byte>(encoded->data(), encoded->size()));
+  auto err =
+      ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
   CHECK(!err.has_value());
   CHECK(err.error().code == ErrorCode::kStorageCorruption);
 }
@@ -80,8 +80,8 @@ TEST_CASE("decode rejects unsupported ledger format version") {
   auto encoded = ChainStore::encode_ledger(std::span<const Block>(&genesis, 1), ConsensusParams{});
   CHECK(encoded.has_value());
 
-  auto err = ChainStore::decode_ledger(
-      std::span<const std::byte>(encoded->data(), encoded->size()));
+  auto err =
+      ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
   CHECK(err.has_value());
 
   (*encoded)[4] = std::byte{0x02};

@@ -2,10 +2,10 @@
 
 #include <cerrno>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <span>
 #include <string>
-#include <cstring>
 #include <vector>
 
 #ifdef _WIN32
@@ -37,7 +37,8 @@ namespace {
   return value;
 }
 
-[[nodiscard]] Result<void> put_block(serialization::ByteWriter& writer, const protocol::Block& block) {
+[[nodiscard]] Result<void> put_block(serialization::ByteWriter& writer,
+                                     const protocol::Block& block) {
   const std::vector<std::byte> bytes = block.to_bytes();
   if (bytes.size() > protocol::kMaxBlockSizeBytes) {
     return make_error(ErrorCode::kResourceLimitExceeded, "block exceeds maximum encoded size");
@@ -106,8 +107,8 @@ namespace {
     return make_error(ErrorCode::kStorageCorruption, "ledger file size is invalid");
   }
   if (static_cast<std::uint64_t>(size) > static_cast<std::uint64_t>(protocol::kMaxBlockSizeBytes) *
-                                              static_cast<std::uint64_t>(kMaxLedgerBlocks) +
-                                          1024U) {
+                                                 static_cast<std::uint64_t>(kMaxLedgerBlocks) +
+                                             1024U) {
     return make_error(ErrorCode::kResourceLimitExceeded, "ledger file is too large");
   }
   std::vector<std::byte> bytes(static_cast<std::size_t>(size));
@@ -200,7 +201,7 @@ bool ChainStore::ledger_exists() const {
 }
 
 Result<std::vector<std::byte>> ChainStore::encode_ledger(std::span<const protocol::Block> blocks,
-                                                       const consensus::ConsensusParams& params) {
+                                                         const consensus::ConsensusParams& params) {
   if (blocks.size() > kMaxLedgerBlocks) {
     return make_error(ErrorCode::kResourceLimitExceeded, "too many blocks for ledger");
   }
@@ -236,8 +237,8 @@ ChainStore::decode_ledger(std::span<const std::byte> bytes) {
   std::uint32_t actual = 0;
   for (std::size_t i = 0; i < sizeof(actual); ++i) {
     actual |= static_cast<std::uint32_t>(
-                   std::to_integer<unsigned char>(bytes[bytes.size() - sizeof(actual) + i]))
-               << (8U * i);
+                  std::to_integer<unsigned char>(bytes[bytes.size() - sizeof(actual) + i]))
+              << (8U * i);
   }
   if (actual != expected) {
     return make_error(ErrorCode::kStorageCorruption, "ledger checksum mismatch");

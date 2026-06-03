@@ -14,8 +14,8 @@ enum class LogLevel : std::uint8_t { kError = 0, kWarn, kInfo, kDebug, kTrace };
 
 // Stage-2 TCP behavior when --listen-port or --peer is set.
 enum class NetworkMode : std::uint8_t {
-  kPing = 0,   // handshake + single ping/pong (default)
-  kRelay,      // handshake + block/tx relay (request/response sync)
+  kPing = 0,  // handshake + single ping/pong (default)
+  kRelay,     // handshake + block/tx relay (request/response sync)
 };
 
 [[nodiscard]] Result<LogLevel> parse_log_level(std::string_view text);

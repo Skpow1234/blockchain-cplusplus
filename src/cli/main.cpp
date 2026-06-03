@@ -59,8 +59,8 @@ int run(const std::vector<std::string>& args, std::string_view program) {
         return 1;
       }
     }
-    std::cout << (relay ? "relay client" : "ping client") << " completed ("
-              << config->peer_host << ":" << config->peer_port << ")\n";
+    std::cout << (relay ? "relay client" : "ping client") << " completed (" << config->peer_host
+              << ":" << config->peer_port << ")\n";
     return 0;
   }
 
