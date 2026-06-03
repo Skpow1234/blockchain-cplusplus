@@ -52,7 +52,8 @@ struct RelayClientOptions {
 
 struct RelayServerOptions {
   // Number of sequential accept/serve cycles before the listener closes.
-  std::uint32_t max_sessions = 1;
+  // Zero means use NodeConfig::relay_max_sessions.
+  std::uint32_t max_sessions = 0;
   // When non-null, set to the bound port after listen (for ephemeral port tests).
   std::atomic<std::uint16_t>* port_ready = nullptr;
 };
