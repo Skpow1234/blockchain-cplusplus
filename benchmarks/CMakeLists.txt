@@ -1,0 +1,4 @@
+add_executable(blockchain_benchmarks bench_main.cpp)
+target_link_libraries(blockchain_benchmarks
+  PRIVATE blockchain_core blockchain_warnings)
+blockchain_enable_sanitizers(blockchain_benchmarks)

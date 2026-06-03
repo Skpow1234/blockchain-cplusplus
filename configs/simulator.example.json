@@ -1,0 +1,8 @@
+{
+  "_comment": "Example Stage 1 simulator configuration. File-based config loading is not yet implemented; these fields currently map 1:1 to CLI flags accepted by blockchain_node (see --help). Nothing here is baked into the binary.",
+  "node_id": "node-0",
+  "data_dir": "./data/node-0",
+  "log_level": "info",
+  "genesis_timestamp": 0,
+  "max_block_size_bytes": 0
+}

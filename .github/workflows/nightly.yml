@@ -1,0 +1,56 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  sanitized-tests:
+    name: asan-ubsan full suite
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld
+
+      - name: Configure ASan/UBSan
+        env:
+          CC: clang
+          CXX: clang++
+        run: cmake --preset asan-ubsan
+
+      - name: Build
+        run: cmake --build --preset asan-ubsan --parallel
+
+      - name: Run tests
+        run: ctest --preset asan-ubsan --output-on-failure
+
+  benchmarks:
+    name: benchmarks
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld
+
+      - name: Run benchmarks
+        env:
+          CC: clang
+          CXX: clang++
+        run: ./scripts/benchmark.sh
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark_results/
+          if-no-files-found: warn

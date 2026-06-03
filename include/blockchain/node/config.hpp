@@ -1,0 +1,43 @@
+#ifndef BLOCKCHAIN_NODE_CONFIG_HPP
+#define BLOCKCHAIN_NODE_CONFIG_HPP
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+#include "blockchain/error.hpp"
+
+namespace blockchain::node {
+
+// Logging verbosity. Ordered from least to most verbose.
+enum class LogLevel : std::uint8_t { kError = 0, kWarn, kInfo, kDebug, kTrace };
+
+[[nodiscard]] Result<LogLevel> parse_log_level(std::string_view text);
+[[nodiscard]] std::string_view to_string(LogLevel level);
+
+// Runtime configuration for a node/simulator instance. Nothing here is
+// hardcoded into the binary: every field is supplied via CLI flags (and later
+// config files) and validated before use.
+struct NodeConfig {
+  std::string node_id = "node-0";
+  std::string data_dir = "./data";
+  LogLevel log_level = LogLevel::kInfo;
+
+  // Stage 1 (single-process simulator) parameters.
+  std::uint64_t genesis_timestamp = 0;
+  std::uint32_t max_block_size_bytes = 0;  // 0 => use protocol default
+
+  // Validates the configuration, returning a descriptive error on failure.
+  [[nodiscard]] Result<void> validate() const;
+};
+
+// Parses argv into a NodeConfig. Returns kInvalidConfig with a helpful message
+// on malformed input. A request for --help is reported as a (handled) error so
+// the caller can print usage and exit cleanly.
+[[nodiscard]] Result<NodeConfig> parse_args(const std::vector<std::string>& args);
+
+[[nodiscard]] std::string usage(std::string_view program);
+
+}  // namespace blockchain::node
+
+#endif  // BLOCKCHAIN_NODE_CONFIG_HPP
