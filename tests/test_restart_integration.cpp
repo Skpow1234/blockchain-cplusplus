@@ -24,7 +24,6 @@ using blockchain::crypto::to_hex;
 using blockchain::node::NetworkMode;
 using blockchain::node::NodeConfig;
 using blockchain::node::PeerState;
-using blockchain::node::RelayServerOptions;
 using blockchain::node::run_relay_client;
 using blockchain::node::run_relay_server;
 using blockchain::node::run_simulator;
@@ -76,8 +75,8 @@ TEST_CASE("simulator persist then relay restore serves chain to client") {
   CHECK(mined.has_value());
   CHECK(ChainStore(dir).ledger_exists());
 
-  auto listener = blockchain::net::TcpListener::bind(blockchain::net::TcpEndpoint{
-      .host = "127.0.0.1", .port = 0});
+  auto listener = blockchain::net::TcpListener::bind(
+      blockchain::net::TcpEndpoint{.host = "127.0.0.1", .port = 0});
   CHECK(listener.has_value());
   auto bound_port = listener->bound_port();
   CHECK(bound_port.has_value());
@@ -128,8 +127,8 @@ TEST_CASE("relay session persist then peer state restore matches tip") {
 
   CHECK(run_simulator(seed).has_value());
 
-  auto listener = blockchain::net::TcpListener::bind(blockchain::net::TcpEndpoint{
-      .host = "127.0.0.1", .port = 0});
+  auto listener = blockchain::net::TcpListener::bind(
+      blockchain::net::TcpEndpoint{.host = "127.0.0.1", .port = 0});
   CHECK(listener.has_value());
   const std::uint16_t port = *listener->bound_port();
   listener->close();
