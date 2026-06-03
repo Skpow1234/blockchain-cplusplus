@@ -336,6 +336,14 @@ TEST_CASE("relay server restores from disk and serves blocks to a peer") {
   seed.persist = true;
   CHECK(run_simulator(seed).has_value());
 
+  NodeConfig restored = seed;
+  restored.restore = true;
+  restored.mine_blocks = 0;
+  restored.persist = false;
+  auto restored_state = PeerState::from_config(restored);
+  CHECK(restored_state.has_value());
+  CHECK_EQ(restored_state->height(), static_cast<std::uint32_t>(2));
+
   std::atomic<std::uint16_t> port{0};
   std::atomic<bool> server_failed{false};
 

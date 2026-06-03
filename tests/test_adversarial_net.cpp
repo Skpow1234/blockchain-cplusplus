@@ -243,6 +243,8 @@ TEST_CASE("relay server answers unknown block height with reject") {
   CHECK(reject.has_value());
   CHECK(reject->code == RejectCode::kInvalidMessage);
 
+  socket->close();
+
   server.join();
   CHECK(server_ok.load());
 }

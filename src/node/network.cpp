@@ -149,7 +149,7 @@ namespace {
   for (std::size_t i = 0; i < kMaxRelayMessages; ++i) {
     auto inbound = net::recv_message(socket);
     if (!inbound) {
-      if (i > 0 && peer_disconnected(inbound.error())) {
+      if (peer_disconnected(inbound.error())) {
         return {};
       }
       return std::unexpected(inbound.error());
@@ -175,8 +175,10 @@ Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
   if (auto loop = relay_message_loop(socket, *state); !loop) {
     return std::unexpected(loop.error());
   }
-  if (auto saved = state->persist_ledger(); !saved) {
-    return std::unexpected(saved.error());
+  if (config.persist) {
+    if (auto saved = state->persist_ledger(); !saved) {
+      return std::unexpected(saved.error());
+    }
   }
   return make_relay_summary(*state);
 }
