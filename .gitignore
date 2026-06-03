@@ -59,3 +59,5 @@ test_adv_storage_*
 test_relay_restore_srv
 test_restart_sim_relay_*
 test_restart_relay_persist_*
+test_config_json_override.json
+test_config_json_on_disk.json

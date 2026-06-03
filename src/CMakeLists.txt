@@ -15,6 +15,7 @@ add_library(blockchain_core
   net/p2p_payloads.cpp
   net/socket_io.cpp
   node/config.cpp
+  node/config_json.cpp
   node/genesis.cpp
   node/network.cpp
   node/peer_state.cpp

@@ -1,12 +1,14 @@
 #include "blockchain/node/config.hpp"
 
 #include <charconv>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/net/socket_io.hpp"
+#include "blockchain/node/config_json.hpp"
 
 namespace blockchain::node {
 namespace {
@@ -118,12 +120,34 @@ Result<void> NodeConfig::validate() const {
 
 Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
   NodeConfig config;
+  std::optional<std::string> config_file_path;
+
+  for (std::size_t i = 0; i < args.size(); ++i) {
+    if (args[i] == "--config") {
+      if (i + 1 >= args.size()) {
+        return make_error(ErrorCode::kInvalidConfig, "missing value for --config");
+      }
+      config_file_path = args[++i];
+    }
+  }
+
+  if (config_file_path) {
+    auto loaded = load_config_file(*config_file_path);
+    if (!loaded) {
+      return std::unexpected(loaded.error());
+    }
+    config = std::move(*loaded);
+  }
 
   for (std::size_t i = 0; i < args.size(); ++i) {
     const std::string& arg = args[i];
 
     if (arg == "--help" || arg == "-h") {
       return make_error(ErrorCode::kInvalidConfig, "help requested");
+    }
+    if (arg == "--config") {
+      ++i;
+      continue;
     }
 
     auto require_value = [&](std::string_view flag) -> Result<std::string> {
@@ -290,6 +314,7 @@ std::string usage(std::string_view program) {
   out += program;
   out += " [options]\n\n";
   out += "Options:\n";
+  out += "  --config <path>            Load JSON config (CLI flags override file)\n";
   out += "  --node-id <id>             Node identifier (default: node-0)\n";
   out += "  --data-dir <path>          Data directory (default: ./data)\n";
   out += "  --persist                  Write ledger.bin after simulator run\n";
