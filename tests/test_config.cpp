@@ -74,6 +74,18 @@ TEST_CASE("network mode flag is parsed") {
   CHECK(config->network_mode == NetworkMode::kRelay);
 }
 
+TEST_CASE("relay max sessions flag is parsed") {
+  auto config = parse_args({"--relay-max-sessions", "3"});
+  CHECK(config.has_value());
+  CHECK_EQ(config->relay_max_sessions, static_cast<std::uint32_t>(3));
+}
+
+TEST_CASE("zero relay max sessions is rejected") {
+  auto config = parse_args({"--relay-max-sessions", "0"});
+  CHECK(!config.has_value());
+  CHECK(config.error().code == ErrorCode::kInvalidConfig);
+}
+
 TEST_CASE("invalid network mode is rejected") {
   auto config = parse_args({"--network-mode", "broadcast"});
   CHECK(!config.has_value());

@@ -34,6 +34,8 @@ struct NodeConfig {
   std::uint32_t max_block_size_bytes = 0;  // 0 => use protocol default
   std::uint32_t mine_blocks = 0;
   std::uint32_t mine_after_tx = 0;
+  // Relay server: accept and serve this many sequential peer connections (>= 1).
+  std::uint32_t relay_max_sessions = 1;
   std::uint32_t coinbase_maturity = 0;
   std::uint16_t listen_port = 0;
   std::uint16_t peer_port = 0;

@@ -31,6 +31,9 @@ int run(const std::vector<std::string>& args, std::string_view program) {
           std::cerr << "network error: " << ok.error().message << "\n";
           return 1;
         }
+        if (ok->sessions_completed > 1) {
+          std::cout << "  sessions served: " << ok->sessions_completed << "\n";
+        }
       } else {
         auto ok = blockchain::node::run_ping_server(*config);
         if (!ok) {

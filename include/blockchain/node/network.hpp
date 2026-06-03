@@ -45,10 +45,21 @@ struct RelayClientOptions {
   std::uint32_t blocks_after_tx = 0;
 };
 
+struct RelayServerOptions {
+  // Number of sequential accept/serve cycles before the listener closes.
+  std::uint32_t max_sessions = 1;
+};
+
+struct RelayServerResult {
+  std::uint32_t sessions_completed = 0;
+  RelaySessionSummary last_session;
+};
+
 [[nodiscard]] Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
                                                                  const NodeConfig& config);
 
-[[nodiscard]] Result<RelaySessionSummary> run_relay_server(const NodeConfig& config);
+[[nodiscard]] Result<RelayServerResult> run_relay_server(const NodeConfig& config,
+                                                         const RelayServerOptions& options = {});
 
 [[nodiscard]] Result<RelayClientResult> run_relay_client(const NodeConfig& config,
                                                          const RelayClientOptions& options = {});

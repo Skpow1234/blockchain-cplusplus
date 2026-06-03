@@ -184,21 +184,37 @@ Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
   return make_relay_summary(*state);
 }
 
-Result<RelaySessionSummary> run_relay_server(const NodeConfig& config) {
+Result<RelayServerResult> run_relay_server(const NodeConfig& config,
+                                           const RelayServerOptions& options) {
   const net::SocketLibrary lib;
   const net::TcpEndpoint endpoint{.host = config.listen_host, .port = config.listen_port};
+
+  const std::uint32_t max_sessions =
+      options.max_sessions != 0 ? options.max_sessions : config.relay_max_sessions;
+  if (max_sessions == 0) {
+    return make_error(ErrorCode::kInvalidConfig, "relay max sessions must be at least 1");
+  }
 
   auto listener = net::TcpListener::bind(endpoint);
   if (!listener) {
     return std::unexpected(listener.error());
   }
 
-  auto client = listener->accept();
-  if (!client) {
-    return std::unexpected(client.error());
+  RelayServerResult result;
+  for (std::uint32_t n = 0; n < max_sessions; ++n) {
+    auto client = listener->accept();
+    if (!client) {
+      return std::unexpected(client.error());
+    }
+    auto session = serve_relay_connection(*client, config);
+    if (!session) {
+      return std::unexpected(session.error());
+    }
+    result.last_session = *session;
+    result.sessions_completed = n + 1;
   }
 
-  return serve_relay_connection(*client, config);
+  return result;
 }
 
 Result<RelayClientResult> run_relay_client(const NodeConfig& config,

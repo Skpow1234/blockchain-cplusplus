@@ -327,7 +327,8 @@ Result<TcpListener> TcpListener::bind(const TcpEndpoint& endpoint) {
     close_native(handle);
     return std::unexpected(socket_error("bind failed"));
   }
-  if (listen(handle, 1) != 0) {
+  constexpr int kListenBacklog = 8;
+  if (listen(handle, kListenBacklog) != 0) {
     close_native(handle);
     return std::unexpected(socket_error("listen failed"));
   }

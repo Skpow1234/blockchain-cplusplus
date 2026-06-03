@@ -25,7 +25,9 @@ using blockchain::node::NetworkMode;
 using blockchain::node::NodeConfig;
 using blockchain::node::PeerState;
 using blockchain::node::RelayClientOptions;
+using blockchain::node::RelayServerOptions;
 using blockchain::node::run_relay_client;
+using blockchain::node::run_relay_server;
 using blockchain::node::run_simulator;
 using blockchain::node::serve_relay_connection;
 using blockchain::protocol::OutPoint;
@@ -387,6 +389,51 @@ TEST_CASE("relay server restores from disk and serves blocks to a peer") {
   auto result = run_relay_client(client_config);
   CHECK(result.has_value());
   CHECK_EQ(result->height, static_cast<std::uint32_t>(2));
+
+  server.join();
+  CHECK(!server_failed.load());
+}
+
+TEST_CASE("relay server serves two sequential peer connections") {
+  blockchain::net::SocketLibrary lib;
+
+  auto listener = blockchain::net::TcpListener::bind(
+      blockchain::net::TcpEndpoint{.host = "127.0.0.1", .port = 0});
+  CHECK(listener.has_value());
+  auto bound_port = listener->bound_port();
+  CHECK(bound_port.has_value());
+  listener->close();
+
+  std::atomic<bool> server_failed{true};
+
+  NodeConfig server_config = relay_test_config();
+  server_config.network_mode = NetworkMode::kRelay;
+  server_config.mine_blocks = 1;
+  server_config.listen_port = *bound_port;
+  server_config.relay_max_sessions = 2;
+
+  std::thread server([&]() {
+    RelayServerOptions options{.max_sessions = 2};
+    auto result = run_relay_server(server_config, options);
+    if (result && result->sessions_completed == 2) {
+      server_failed.store(false);
+    }
+  });
+
+  NodeConfig client_config = server_config;
+  client_config.mine_blocks = 0;
+  client_config.persist = false;
+  client_config.peer_host = "127.0.0.1";
+  client_config.peer_port = *bound_port;
+
+  auto first = run_relay_client(client_config);
+  CHECK(first.has_value());
+  CHECK_EQ(first->height, static_cast<std::uint32_t>(1));
+
+  auto second = run_relay_client(client_config);
+  CHECK(second.has_value());
+  CHECK_EQ(second->height, static_cast<std::uint32_t>(1));
+  CHECK(first->tip_hash == second->tip_hash);
 
   server.join();
   CHECK(!server_failed.load());

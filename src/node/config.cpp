@@ -110,6 +110,9 @@ Result<void> NodeConfig::validate() const {
     return make_error(ErrorCode::kInvalidConfig,
                       "specify either --listen-port or --peer, not both");
   }
+  if (relay_max_sessions == 0) {
+    return make_error(ErrorCode::kInvalidConfig, "relay_max_sessions must be at least 1");
+  }
   return {};
 }
 
@@ -183,6 +186,16 @@ Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
         return std::unexpected(parsed.error());
       }
       config.mine_after_tx = *parsed;
+    } else if (arg == "--relay-max-sessions") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u32(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.relay_max_sessions = *parsed;
     } else if (arg == "--mine-blocks") {
       auto value = require_value(arg);
       if (!value) {
@@ -286,12 +299,13 @@ std::string usage(std::string_view program) {
   out += "  --max-block-size <bytes>   Override max block size (default: protocol limit)\n";
   out += "  --mine-blocks <n>          Mine n blocks after genesis (default: 0)\n";
   out += "  --mine-after-tx <n>        Relay: mine n blocks after each tx announce (default: 0)\n";
+  out += "  --relay-max-sessions <n>   Relay server: serve n sequential peers (default: 1)\n";
   out += "  --block-subsidy <amount>   Coinbase subsidy per block (default: protocol)\n";
   out += "  --coinbase-maturity <n>    Blocks before a coinbase may be spent (default: protocol)\n";
   out += "  --coinbase-recipient <hex> 64-char hex payout address (default: zero)\n";
   out += "  --network-mode <mode>      ping|relay when using TCP (default: ping)\n";
   out += "  --listen-host <ipv4>        Bind address for TCP server (default: 127.0.0.1)\n";
-  out += "  --listen-port <port>        Run TCP server on this port (accept one peer)\n";
+  out += "  --listen-port <port>        Run TCP server on this port\n";
   out += "  --peer <host:port>         Connect as TCP client to host:port\n";
   out += "  -h, --help                 Show this help and exit\n";
   return out;
