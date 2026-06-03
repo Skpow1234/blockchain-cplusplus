@@ -12,12 +12,6 @@
 namespace blockchain::node {
 namespace {
 
-// Stage-1 simulator mempool capacity (not consensus constants). Large enough for
-// local integration runs; override via SimulatorOptions::mempool_limits.
-constexpr std::uint32_t kDefaultMempoolMaxTransactions = 10'000;
-constexpr std::uint64_t kDefaultMempoolMaxBytes =
-    100ULL * static_cast<std::uint64_t>(protocol::kMaxBlockSizeBytes);
-
 [[nodiscard]] consensus::ConsensusParams build_consensus_params(const NodeConfig& config) {
   consensus::ConsensusParams params;
   if (config.block_subsidy != 0) {
@@ -49,13 +43,14 @@ constexpr std::uint64_t kDefaultMempoolMaxBytes =
   return params;
 }
 
-[[nodiscard]] mempool::MempoolLimits resolve_mempool_limits(const SimulatorOptions& options) {
-  mempool::MempoolLimits limits = options.mempool_limits;
-  if (limits.max_transactions == 0) {
-    limits.max_transactions = kDefaultMempoolMaxTransactions;
+[[nodiscard]] mempool::MempoolLimits resolve_mempool_limits(const NodeConfig& config,
+                                                            const SimulatorOptions& options) {
+  mempool::MempoolLimits limits = resolved_mempool_limits(config);
+  if (options.mempool_limits.max_transactions != 0) {
+    limits.max_transactions = options.mempool_limits.max_transactions;
   }
-  if (limits.max_total_bytes == 0) {
-    limits.max_total_bytes = kDefaultMempoolMaxBytes;
+  if (options.mempool_limits.max_total_bytes != 0) {
+    limits.max_total_bytes = options.mempool_limits.max_total_bytes;
   }
   return limits;
 }
@@ -80,9 +75,10 @@ struct RunStats {
 
 [[nodiscard]] Result<void> admit_transactions(mempool::Mempool& pool, const consensus::Chain& chain,
                                               std::span<const protocol::Transaction> txs,
+                                              const mempool::MempoolPolicy& policy,
                                               RunStats& stats) {
   for (const protocol::Transaction& tx : txs) {
-    if (auto ok = pool.accept(tx, chain.utxos()); !ok) {
+    if (auto ok = pool.accept(tx, chain.utxos(), policy); !ok) {
       return ok;
     }
     ++stats.txs_admitted;
@@ -159,7 +155,9 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config, const Simulator
   const protocol::Block genesis = build_genesis_block(config);
   const production::BlockTemplateParams tmpl_params =
       build_template_params(config, consensus, *recipient);
-  mempool::Mempool pool(resolve_mempool_limits(options));
+  const mempool::MempoolLimits pool_limits = resolve_mempool_limits(config, options);
+  const mempool::MempoolPolicy pool_policy = resolved_mempool_policy(config);
+  mempool::Mempool pool(pool_limits);
 
   std::vector<protocol::Block> ledger;
   RunStats stats;
@@ -203,7 +201,8 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config, const Simulator
 
   if (!options.steps.empty()) {
     for (const SimulatorStep& step : options.steps) {
-      if (auto admitted = admit_transactions(pool, chain, step.submit_txs, stats); !admitted) {
+      if (auto admitted = admit_transactions(pool, chain, step.submit_txs, pool_policy, stats);
+          !admitted) {
         return std::unexpected(admitted.error());
       }
       if (auto mined =

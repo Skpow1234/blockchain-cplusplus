@@ -6,6 +6,8 @@
 #include <vector>
 
 #include "blockchain/error.hpp"
+#include "blockchain/mempool/mempool.hpp"
+#include "blockchain/mempool/policy.hpp"
 
 namespace blockchain::node {
 
@@ -58,9 +60,17 @@ struct NodeConfig {
   // Relay client: canonical transaction files to announce after block sync.
   std::vector<std::string> announce_tx_files;
 
+  // Mempool capacity and policy (zero fields select documented defaults).
+  std::uint32_t mempool_max_transactions = 0;
+  std::uint64_t mempool_max_bytes = 0;
+  std::uint64_t min_relay_feerate = 0;
+
   // Validates the configuration, returning a descriptive error on failure.
   [[nodiscard]] Result<void> validate() const;
 };
+
+[[nodiscard]] mempool::MempoolLimits resolved_mempool_limits(const NodeConfig& config) noexcept;
+[[nodiscard]] mempool::MempoolPolicy resolved_mempool_policy(const NodeConfig& config) noexcept;
 
 // Parses argv into a NodeConfig. Returns kInvalidConfig with a helpful message
 // on malformed input. A request for --help is reported as a (handled) error so

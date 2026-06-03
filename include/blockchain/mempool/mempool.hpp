@@ -9,6 +9,7 @@
 
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/error.hpp"
+#include "blockchain/mempool/policy.hpp"
 #include "blockchain/protocol/transaction.hpp"
 #include "blockchain/state/utxo_set.hpp"
 
@@ -61,8 +62,11 @@ class Mempool {
   // rejection reasons:
   //   * kInvalidTransaction       - failed sanity/consensus checks, duplicate,
   //                                 or conflicts with an in-mempool transaction
-  //   * kResourceLimitExceeded    - would exceed count or byte limits
-  [[nodiscard]] Result<void> accept(const protocol::Transaction& tx, const state::UtxoSet& utxos);
+  //   * kPolicyRejected           - consensus-valid but rejected by mempool policy
+  //   * kResourceLimitExceeded    - would exceed count or byte limits (and cannot
+  //                                 evict lower-fee entries to make room)
+  [[nodiscard]] Result<void> accept(const protocol::Transaction& tx, const state::UtxoSet& utxos,
+                                    const MempoolPolicy& policy = {});
 
   [[nodiscard]] bool contains(const crypto::Hash256& txid) const;
   [[nodiscard]] const Entry* find(const crypto::Hash256& txid) const;

@@ -289,6 +289,18 @@ struct JsonParser {
     config.relay_max_sessions = static_cast<std::uint32_t>(value);
     return {};
   }
+  if (key == "mempool_max_transactions") {
+    config.mempool_max_transactions = static_cast<std::uint32_t>(value);
+    return {};
+  }
+  if (key == "mempool_max_bytes") {
+    config.mempool_max_bytes = value;
+    return {};
+  }
+  if (key == "min_relay_feerate") {
+    config.min_relay_feerate = value;
+    return {};
+  }
   if (key == "coinbase_maturity") {
     config.coinbase_maturity = static_cast<std::uint32_t>(value);
     return {};

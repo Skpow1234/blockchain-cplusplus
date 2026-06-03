@@ -129,3 +129,12 @@ TEST_CASE("relay client tx flags are parsed") {
   CHECK_EQ(config->announce_tx_files[0], std::string("a.tx"));
   CHECK_EQ(config->announce_tx_files[1], std::string("b.tx"));
 }
+
+TEST_CASE("mempool policy flags are parsed") {
+  auto config = parse_args({"--mempool-max-transactions", "50", "--mempool-max-bytes", "4096",
+                            "--min-relay-feerate", "10"});
+  CHECK(config.has_value());
+  CHECK_EQ(config->mempool_max_transactions, static_cast<std::uint32_t>(50));
+  CHECK_EQ(config->mempool_max_bytes, static_cast<std::uint64_t>(4096));
+  CHECK_EQ(config->min_relay_feerate, static_cast<std::uint64_t>(10));
+}

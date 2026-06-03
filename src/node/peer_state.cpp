@@ -12,10 +12,6 @@
 namespace blockchain::node {
 namespace {
 
-constexpr std::uint32_t kRelayMempoolMaxTransactions = 10'000;
-constexpr std::uint64_t kRelayMempoolMaxBytes =
-    100ULL * static_cast<std::uint64_t>(protocol::kMaxBlockSizeBytes);
-
 [[nodiscard]] consensus::ConsensusParams build_consensus_params(const NodeConfig& config) {
   consensus::ConsensusParams params;
   if (config.block_subsidy != 0) {
@@ -88,12 +84,14 @@ constexpr std::uint64_t kRelayMempoolMaxBytes =
 
 }  // namespace
 
-PeerState::PeerState(consensus::Chain chain, mempool::Mempool mempool, std::string node_id,
+PeerState::PeerState(consensus::Chain chain, mempool::Mempool mempool,
+                     mempool::MempoolPolicy mempool_policy, std::string node_id,
                      std::uint64_t genesis_timestamp, consensus::ConsensusParams consensus,
                      production::BlockTemplateParams tmpl_params, std::string data_dir,
                      bool persist, std::uint32_t mine_after_tx)
     : chain_(std::move(chain)),
       mempool_(std::move(mempool)),
+      mempool_policy_(mempool_policy),
       node_id_(std::move(node_id)),
       genesis_timestamp_(genesis_timestamp),
       consensus_(consensus),
@@ -110,6 +108,8 @@ Result<PeerState> PeerState::from_config(const NodeConfig& config) {
   }
   const production::BlockTemplateParams tmpl_params =
       build_template_params(config, consensus, *recipient);
+  const mempool::MempoolLimits pool_limits = resolved_mempool_limits(config);
+  const mempool::MempoolPolicy pool_policy = resolved_mempool_policy(config);
 
   if (config.restore) {
     storage::ChainStore store(config.data_dir);
@@ -125,10 +125,10 @@ Result<PeerState> PeerState::from_config(const NodeConfig& config) {
       return std::unexpected(ledger.error());
     }
 
-    mempool::Mempool pool(mempool::MempoolLimits{.max_transactions = kRelayMempoolMaxTransactions,
-                                                 .max_total_bytes = kRelayMempoolMaxBytes});
-    PeerState state(std::move(*chain), std::move(pool), config.node_id, config.genesis_timestamp,
-                    consensus, tmpl_params, config.data_dir, config.persist, config.mine_after_tx);
+    mempool::Mempool pool(pool_limits);
+    PeerState state(std::move(*chain), std::move(pool), pool_policy, config.node_id,
+                    config.genesis_timestamp, consensus, tmpl_params, config.data_dir,
+                    config.persist, config.mine_after_tx);
     for (const protocol::Block& block : ledger->first) {
       state.store_block(block.header.height, block);
     }
@@ -141,11 +141,11 @@ Result<PeerState> PeerState::from_config(const NodeConfig& config) {
     return std::unexpected(chain.error());
   }
 
-  mempool::Mempool pool(mempool::MempoolLimits{.max_transactions = kRelayMempoolMaxTransactions,
-                                               .max_total_bytes = kRelayMempoolMaxBytes});
+  mempool::Mempool pool(pool_limits);
 
-  PeerState state(std::move(*chain), std::move(pool), config.node_id, config.genesis_timestamp,
-                  consensus, tmpl_params, config.data_dir, config.persist, config.mine_after_tx);
+  PeerState state(std::move(*chain), std::move(pool), pool_policy, config.node_id,
+                  config.genesis_timestamp, consensus, tmpl_params, config.data_dir,
+                  config.persist, config.mine_after_tx);
   state.store_block(0, genesis);
 
   if (auto mined = state.mine_blocks(config.mine_blocks); !mined) {
@@ -233,10 +233,7 @@ Result<void> PeerState::mine_blocks(std::uint32_t count) {
 }
 
 Result<void> PeerState::accept_transaction(const protocol::Transaction& tx) {
-  if (auto sanity = validation::check_transaction_sanity(tx); !sanity) {
-    return std::unexpected(sanity.error());
-  }
-  return mempool_.accept(tx, chain_.utxos());
+  return mempool_.accept(tx, chain_.utxos(), mempool_policy_);
 }
 
 Result<void> PeerState::on_tx_announce(std::span<const std::byte> payload_bytes) {

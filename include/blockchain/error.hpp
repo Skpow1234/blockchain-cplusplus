@@ -21,6 +21,7 @@ enum class ErrorCode : std::uint8_t {
   kStorageCorruption,
   kUnsupportedVersion,
   kResourceLimitExceeded,
+  kPolicyRejected,
   kPeerMisbehavior,
   kInvalidConfig,
 };
@@ -43,6 +44,8 @@ enum class ErrorCode : std::uint8_t {
       return "UnsupportedVersion";
     case ErrorCode::kResourceLimitExceeded:
       return "ResourceLimitExceeded";
+    case ErrorCode::kPolicyRejected:
+      return "PolicyRejected";
     case ErrorCode::kPeerMisbehavior:
       return "PeerMisbehavior";
     case ErrorCode::kInvalidConfig:

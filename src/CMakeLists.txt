@@ -8,6 +8,7 @@ add_library(blockchain_core
   validation/transaction_validation.cpp
   validation/block_validation.cpp
   mempool/mempool.cpp
+  mempool/policy.cpp
   production/block_builder.cpp
   consensus/chain.cpp
   storage/chain_store.cpp

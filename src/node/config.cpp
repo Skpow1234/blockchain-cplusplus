@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "blockchain/crypto/hash.hpp"
+#include "blockchain/mempool/policy.hpp"
 #include "blockchain/net/socket_io.hpp"
 #include "blockchain/node/config_json.hpp"
 
@@ -95,6 +96,20 @@ std::string_view to_string(NetworkMode mode) {
       return "relay";
   }
   return "ping";
+}
+
+mempool::MempoolLimits resolved_mempool_limits(const NodeConfig& config) noexcept {
+  mempool::MempoolLimits limits;
+  limits.max_transactions = config.mempool_max_transactions != 0
+                                ? config.mempool_max_transactions
+                                : mempool::kDefaultMempoolMaxTransactions;
+  limits.max_total_bytes =
+      config.mempool_max_bytes != 0 ? config.mempool_max_bytes : mempool::kDefaultMempoolMaxBytes;
+  return limits;
+}
+
+mempool::MempoolPolicy resolved_mempool_policy(const NodeConfig& config) noexcept {
+  return mempool::MempoolPolicy{.min_relay_feerate = config.min_relay_feerate};
 }
 
 Result<void> NodeConfig::validate() const {
@@ -236,6 +251,36 @@ Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
         return std::unexpected(value.error());
       }
       config.announce_tx_files.push_back(*value);
+    } else if (arg == "--mempool-max-transactions") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u32(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.mempool_max_transactions = *parsed;
+    } else if (arg == "--mempool-max-bytes") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u64(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.mempool_max_bytes = *parsed;
+    } else if (arg == "--min-relay-feerate") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u64(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.min_relay_feerate = *parsed;
     } else if (arg == "--mine-blocks") {
       auto value = require_value(arg);
       if (!value) {
@@ -350,6 +395,9 @@ std::string usage(std::string_view program) {
   out += "  --relay-max-sessions <n>   Relay server: serve n sequential peers (default: 1)\n";
   out += "  --announce-tx-file <path>  Relay client: announce tx from file (repeatable)\n";
   out += "  --relay-blocks-after-tx <n> Relay client: pull n blocks after tx announce (default: 0)\n";
+  out += "  --mempool-max-transactions <n> Mempool tx count limit (default: documented default)\n";
+  out += "  --mempool-max-bytes <n>    Mempool total byte limit (default: documented default)\n";
+  out += "  --min-relay-feerate <n>    Minimum fee per serialized byte (default: 0)\n";
   out += "  --block-subsidy <amount>   Coinbase subsidy per block (default: protocol)\n";
   out += "  --coinbase-maturity <n>    Blocks before a coinbase may be spent (default: protocol)\n";
   out += "  --coinbase-recipient <hex> 64-char hex payout address (default: zero)\n";

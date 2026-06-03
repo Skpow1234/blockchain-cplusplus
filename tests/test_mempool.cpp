@@ -3,6 +3,7 @@
 
 #include "blockchain/error.hpp"
 #include "blockchain/mempool/mempool.hpp"
+#include "blockchain/mempool/policy.hpp"
 #include "blockchain/protocol/transaction.hpp"
 #include "blockchain/state/utxo_set.hpp"
 #include "testing.hpp"
@@ -151,4 +152,48 @@ TEST_CASE("entries_by_feerate orders by descending fee rate") {
   CHECK_EQ(ordered.size(), static_cast<std::size_t>(2));
   CHECK(ordered.front().txid == high.txid());
   CHECK(ordered.back().txid == low.txid());
+}
+
+TEST_CASE("min relay feerate rejects consensus-valid low-fee transaction") {
+  Mempool pool(generous());
+  const UtxoSet set = funded(0x20, 0, 100);
+  const Transaction tx = spend_tx(0x20, 0, 99, 0xAA);  // fee 1
+
+  MempoolPolicy policy{.min_relay_feerate = 2};
+  auto result = pool.accept(tx, set, policy);
+  CHECK(!result.has_value());
+  CHECK(result.error().code == ErrorCode::kPolicyRejected);
+  CHECK_EQ(pool.size(), static_cast<std::size_t>(0));
+}
+
+TEST_CASE("higher feerate transaction evicts lower feerate when count limit reached") {
+  Mempool pool(MempoolLimits{.max_transactions = 1, .max_total_bytes = 1U << 20U});
+  UtxoSet set;
+  (void)set.add(make_outpoint(0x21, 0), Coin{.output = {.value = 1000, .recipient = {}}});
+  (void)set.add(make_outpoint(0x22, 0), Coin{.output = {.value = 1000, .recipient = {}}});
+
+  const Transaction low = spend_tx(0x21, 0, 990, 0xAA);   // fee 10
+  const Transaction high = spend_tx(0x22, 0, 100, 0xBB);  // fee 900
+  CHECK(pool.accept(low, set).has_value());
+  CHECK(pool.contains(low.txid()));
+
+  CHECK(pool.accept(high, set).has_value());
+  CHECK(!pool.contains(low.txid()));
+  CHECK(pool.contains(high.txid()));
+  CHECK_EQ(pool.size(), static_cast<std::size_t>(1));
+}
+
+TEST_CASE("equal feerate cannot evict when count limit reached") {
+  Mempool pool(MempoolLimits{.max_transactions = 1, .max_total_bytes = 1U << 20U});
+  UtxoSet set;
+  (void)set.add(make_outpoint(0x23, 0), Coin{.output = {.value = 100, .recipient = {}}});
+  (void)set.add(make_outpoint(0x24, 0), Coin{.output = {.value = 100, .recipient = {}}});
+
+  const Transaction first = spend_tx(0x23, 0, 70, 0xAA);
+  const Transaction second = spend_tx(0x24, 0, 70, 0xBB);
+  CHECK(pool.accept(first, set).has_value());
+  auto over = pool.accept(second, set);
+  CHECK(!over.has_value());
+  CHECK(over.error().code == ErrorCode::kResourceLimitExceeded);
+  CHECK(pool.contains(first.txid()));
 }

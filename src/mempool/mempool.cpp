@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "blockchain/validation/transaction_validation.hpp"
+#include "blockchain/mempool/policy.hpp"
 
 namespace blockchain::mempool {
 namespace {
@@ -48,17 +48,36 @@ bool higher_feerate(const Mempool::Entry& a, const Mempool::Entry& b) {
   return Hash256Less{}(a.txid, b.txid);
 }
 
+// True if `a` has strictly lower feerate than `b`, or equal feerate with higher
+// txid (the entry evicted first when making room under byte/count limits).
+bool lower_feerate_for_eviction(const Mempool::Entry& a, const Mempool::Entry& b) {
+  if (higher_feerate(a, b)) {
+    return false;
+  }
+  if (higher_feerate(b, a)) {
+    return true;
+  }
+  return !Hash256Less{}(a.txid, b.txid);
+}
+
+const Mempool::Entry* find_lowest_feerate(const std::map<crypto::Hash256, Mempool::Entry, Hash256Less>& by_txid) {
+  const Mempool::Entry* worst = nullptr;
+  for (const auto& [txid, entry] : by_txid) {
+    (void)txid;
+    if (worst == nullptr || lower_feerate_for_eviction(entry, *worst)) {
+      worst = &entry;
+    }
+  }
+  return worst;
+}
+
 }  // namespace
 
-Result<void> Mempool::accept(const protocol::Transaction& tx, const state::UtxoSet& utxos) {
-  if (auto sane = validation::check_transaction_sanity(tx); !sane) {
-    return sane;
-  }
-
-  // Coinbase transactions are created by block producers, never relayed or
-  // pooled; they have no real inputs to validate here.
-  if (tx.is_coinbase()) {
-    return make_error(ErrorCode::kInvalidTransaction, "coinbase cannot enter the mempool");
+Result<void> Mempool::accept(const protocol::Transaction& tx, const state::UtxoSet& utxos,
+                             const MempoolPolicy& policy) {
+  auto admission = validate_for_mempool(tx, utxos, policy);
+  if (!admission) {
+    return std::unexpected(admission.error());
   }
 
   const crypto::Hash256 txid = tx.txid();
@@ -66,13 +85,6 @@ Result<void> Mempool::accept(const protocol::Transaction& tx, const state::UtxoS
     return make_error(ErrorCode::kInvalidTransaction, "transaction already in mempool");
   }
 
-  auto fee = validation::check_transaction_inputs(tx, utxos);
-  if (!fee) {
-    return std::unexpected(fee.error());
-  }
-
-  // Conflict detection: reject if any input is already reserved by another
-  // in-mempool transaction (no replacement policy yet).
   for (const protocol::TxInput& input : tx.inputs) {
     if (spent_by_.find(input.prevout) != spent_by_.end()) {
       return make_error(ErrorCode::kInvalidTransaction,
@@ -80,27 +92,30 @@ Result<void> Mempool::accept(const protocol::Transaction& tx, const state::UtxoS
     }
   }
 
-  const std::uint64_t size_bytes = static_cast<std::uint64_t>(tx.to_bytes().size());
+  Entry incoming;
+  incoming.transaction = tx;
+  incoming.txid = txid;
+  incoming.fee = admission->fee;
+  incoming.size_bytes = admission->size_bytes;
 
-  if (by_txid_.size() + 1 > limits_.max_transactions) {
-    return make_error(ErrorCode::kResourceLimitExceeded, "mempool transaction count limit reached");
-  }
-  // Guard the subtraction against unsigned underflow before comparing.
-  if (size_bytes > limits_.max_total_bytes || total_bytes_ > limits_.max_total_bytes - size_bytes) {
-    return make_error(ErrorCode::kResourceLimitExceeded, "mempool byte limit reached");
+  while (by_txid_.size() + 1 > limits_.max_transactions ||
+         total_bytes_ > limits_.max_total_bytes - incoming.size_bytes) {
+    const Entry* worst = find_lowest_feerate(by_txid_);
+    if (worst == nullptr || !higher_feerate(incoming, *worst)) {
+      return make_error(ErrorCode::kResourceLimitExceeded, "mempool capacity limit reached");
+    }
+    remove(worst->txid);
   }
 
-  Entry entry;
-  entry.transaction = tx;
-  entry.txid = txid;
-  entry.fee = *fee;
-  entry.size_bytes = size_bytes;
+  if (incoming.size_bytes > limits_.max_total_bytes) {
+    return make_error(ErrorCode::kResourceLimitExceeded, "transaction exceeds mempool byte limit");
+  }
 
   for (const protocol::TxInput& input : tx.inputs) {
     spent_by_.emplace(input.prevout, txid);
   }
-  by_txid_.emplace(txid, std::move(entry));
-  total_bytes_ += size_bytes;
+  by_txid_.emplace(txid, std::move(incoming));
+  total_bytes_ += admission->size_bytes;
 
   return {};
 }

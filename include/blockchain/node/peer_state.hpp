@@ -51,8 +51,8 @@ class PeerState {
   [[nodiscard]] const protocol::Block* block_at_height(std::uint32_t height) const noexcept;
 
  private:
-  PeerState(consensus::Chain chain, mempool::Mempool mempool, std::string node_id,
-            std::uint64_t genesis_timestamp, consensus::ConsensusParams consensus,
+  PeerState(consensus::Chain chain, mempool::Mempool mempool, mempool::MempoolPolicy mempool_policy,
+            std::string node_id, std::uint64_t genesis_timestamp, consensus::ConsensusParams consensus,
             production::BlockTemplateParams tmpl_params, std::string data_dir, bool persist,
             std::uint32_t mine_after_tx);
 
@@ -69,6 +69,7 @@ class PeerState {
 
   consensus::Chain chain_;
   mempool::Mempool mempool_;
+  mempool::MempoolPolicy mempool_policy_{};
   std::string node_id_;
   std::uint64_t genesis_timestamp_ = 0;
   consensus::ConsensusParams consensus_{};
