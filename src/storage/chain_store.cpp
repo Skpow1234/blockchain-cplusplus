@@ -1,11 +1,24 @@
 #include "blockchain/storage/chain_store.hpp"
 
+#include <cerrno>
 #include <cstdint>
-#include <filesystem>
 #include <fstream>
 #include <span>
 #include <string>
+#include <cstring>
 #include <vector>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <direct.h>
+#include <io.h>
+#include <windows.h>
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/protocol/constants.hpp"
@@ -106,6 +119,51 @@ namespace {
   return bytes;
 }
 
+[[nodiscard]] bool is_regular_file(const std::string& path) {
+  std::ifstream input(path, std::ios::binary);
+  return input.good();
+}
+
+[[nodiscard]] Result<void> create_directory(const std::string& path) {
+#ifdef _WIN32
+  if (_mkdir(path.c_str()) == 0 || errno == EEXIST) {
+    return {};
+  }
+#else
+  if (mkdir(path.c_str(), 0755) == 0 || errno == EEXIST) {
+    return {};
+  }
+#endif
+  return make_error(ErrorCode::kStorageCorruption,
+                    "cannot create data directory: " + std::string(std::strerror(errno)));
+}
+
+[[nodiscard]] Result<void> rename_file(const std::string& from, const std::string& to) {
+#ifdef _WIN32
+  if (MoveFileExA(from.c_str(), to.c_str(), MOVEFILE_REPLACE_EXISTING) != 0) {
+    return {};
+  }
+  return make_error(ErrorCode::kStorageCorruption,
+                    "ledger atomic rename failed (errno=" + std::to_string(GetLastError()) + ")");
+#else
+  if (rename(from.c_str(), to.c_str()) == 0) {
+    return {};
+  }
+  return make_error(ErrorCode::kStorageCorruption,
+                    "ledger atomic rename failed: " + std::string(std::strerror(errno)));
+#endif
+}
+
+[[nodiscard]] std::string join_path(const std::string& dir, const char* filename) {
+  if (dir.empty()) {
+    return filename;
+  }
+  if (dir.back() == '/' || dir.back() == '\\') {
+    return dir + filename;
+  }
+  return dir + "/" + filename;
+}
+
 [[nodiscard]] Result<void> write_file_atomic(const std::string& path, const std::string& temp_path,
                                              std::span<const std::byte> bytes) {
   {
@@ -119,13 +177,7 @@ namespace {
       return make_error(ErrorCode::kStorageCorruption, "ledger temp file write failed");
     }
   }
-  std::error_code ec;
-  std::filesystem::rename(temp_path, path, ec);
-  if (ec) {
-    return make_error(ErrorCode::kStorageCorruption,
-                      "ledger atomic rename failed: " + ec.message());
-  }
-  return {};
+  return rename_file(temp_path, path);
 }
 
 }  // namespace
@@ -133,15 +185,15 @@ namespace {
 ChainStore::ChainStore(std::string data_dir) : data_dir_(std::move(data_dir)) {}
 
 std::string ChainStore::ledger_path(const std::string& data_dir) {
-  return (std::filesystem::path(data_dir) / ledger_filename()).string();
+  return join_path(data_dir, ledger_filename());
 }
 
 std::string ChainStore::ledger_temp_path(const std::string& data_dir) {
-  return (std::filesystem::path(data_dir) / ledger_temp_filename()).string();
+  return join_path(data_dir, ledger_temp_filename());
 }
 
 bool ChainStore::ledger_exists() const {
-  return std::filesystem::is_regular_file(ledger_path(data_dir_));
+  return is_regular_file(ledger_path(data_dir_));
 }
 
 Result<std::vector<std::byte>> ChainStore::encode_ledger(std::span<const protocol::Block> blocks,
@@ -248,11 +300,8 @@ Result<void> ChainStore::save_ledger(std::span<const protocol::Block> blocks,
     return std::unexpected(encoded.error());
   }
 
-  std::error_code ec;
-  std::filesystem::create_directories(data_dir_, ec);
-  if (ec) {
-    return make_error(ErrorCode::kStorageCorruption,
-                      "cannot create data directory: " + ec.message());
+  if (auto dir = create_directory(data_dir_); !dir) {
+    return dir;
   }
 
   return write_file_atomic(ledger_path(data_dir_), ledger_temp_path(data_dir_),

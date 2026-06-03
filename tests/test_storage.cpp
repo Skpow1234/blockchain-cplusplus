@@ -1,5 +1,12 @@
-#include <filesystem>
+#include <cstdio>
 #include <fstream>
+
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 #include <span>
 #include <string>
 #include <vector>
@@ -13,6 +20,7 @@
 #include "blockchain/node/simulator.hpp"
 #include "blockchain/production/block_builder.hpp"
 #include "blockchain/protocol/block.hpp"
+#include "blockchain/protocol/constants.hpp"
 #include "blockchain/storage/chain_store.hpp"
 #include "testing.hpp"
 
@@ -32,15 +40,22 @@ using blockchain::storage::ChainStore;
 namespace {
 
 std::string temp_data_dir() {
-  const auto dir = std::filesystem::temp_directory_path() / "blockchain_test_storage";
-  std::error_code ec;
-  std::filesystem::remove_all(dir, ec);
-  std::filesystem::create_directories(dir, ec);
-  return dir.string();
+  static int counter = 0;
+  const std::string dir = "test_storage_" + std::to_string(++counter);
+  (void)std::remove(dir.c_str());
+#ifdef _WIN32
+  (void)_mkdir(dir.c_str());
+#else
+  (void)mkdir(dir.c_str(), 0755);
+#endif
+  return dir;
 }
 
 BlockTemplateParams template_params(const ConsensusParams& consensus) {
   BlockTemplateParams params;
+  params.version = blockchain::protocol::kBlockVersion;
+  params.max_block_size_bytes = blockchain::protocol::kMaxBlockSizeBytes;
+  params.max_transactions = blockchain::protocol::kMaxTransactionsPerBlock;
   params.consensus = consensus;
   params.coinbase_recipient = blockchain::crypto::zero_hash();
   return params;

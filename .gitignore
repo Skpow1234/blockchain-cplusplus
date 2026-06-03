@@ -51,3 +51,5 @@ docs/baselines/current*.json
 Thumbs.db
 
 docs/DESIGN.md
+
+test_storage_*
