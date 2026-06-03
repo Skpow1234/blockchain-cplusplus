@@ -16,6 +16,7 @@
 
 using blockchain::net::BlockRequestPayload;
 using blockchain::net::HandshakePayload;
+using blockchain::net::kMaxP2pFrameBytes;
 using blockchain::net::kNetworkMagic;
 using blockchain::net::make_block_request_message;
 using blockchain::net::make_handshake_message;
@@ -57,41 +58,57 @@ HandshakePayload sample_handshake() {
   return inbound.has_value() && inbound->type == P2pMessageType::kHandshake;
 }
 
+struct RelayServerThread {
+  std::atomic<std::uint16_t> port{0};
+  std::atomic<bool> completed_ok{false};
+
+  std::thread worker;
+
+  explicit RelayServerThread(const NodeConfig& server_config) {
+    worker = std::thread([this, server_config]() {
+      TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
+      auto listener = TcpListener::bind(bind_ep);
+      if (!listener) {
+        return;
+      }
+      auto bound = listener->bound_port();
+      if (!bound) {
+        return;
+      }
+      port.store(*bound);
+
+      auto client = listener->accept();
+      if (!client) {
+        return;
+      }
+      completed_ok.store(serve_relay_connection(*client, server_config).has_value());
+    });
+  }
+
+  void wait_for_port() {
+    while (port.load() == 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
+
+  void join() { worker.join(); }
+};
+
+[[nodiscard]] NodeConfig relay_server_config() {
+  NodeConfig config;
+  config.network_mode = NetworkMode::kRelay;
+  return config;
+}
+
 }  // namespace
 
 TEST_CASE("relay server rejects malformed P2P bytes after handshake") {
   SocketLibrary lib;
 
-  std::atomic<std::uint16_t> port{0};
-  std::atomic<bool> server_ok{false};
+  RelayServerThread server(relay_server_config());
+  server.wait_for_port();
 
-  NodeConfig server_config;
-  server_config.network_mode = NetworkMode::kRelay;
-
-  std::thread server([&]() {
-    TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
-    auto listener = TcpListener::bind(bind_ep);
-    if (!listener) {
-      return;
-    }
-    auto bound = listener->bound_port();
-    if (!bound) {
-      return;
-    }
-    port.store(*bound);
-
-    auto client = listener->accept();
-    if (!client) {
-      return;
-    }
-    server_ok.store(serve_relay_connection(*client, server_config).has_value());
-  });
-
-  while (port.load() == 0) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
-
-  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = port.load()});
+  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = server.port.load()});
   CHECK(socket.has_value());
   CHECK(exchange_valid_handshake(*socket));
 
@@ -99,42 +116,16 @@ TEST_CASE("relay server rejects malformed P2P bytes after handshake") {
   CHECK(socket->send_framed(garbage).has_value());
 
   server.join();
-  CHECK(!server_ok.load());
+  CHECK(!server.completed_ok.load());
 }
 
 TEST_CASE("relay server rejects invalid P2P checksum on the wire") {
   SocketLibrary lib;
 
-  std::atomic<std::uint16_t> port{0};
-  std::atomic<bool> server_ok{false};
+  RelayServerThread server(relay_server_config());
+  server.wait_for_port();
 
-  NodeConfig server_config;
-  server_config.network_mode = NetworkMode::kRelay;
-
-  std::thread server([&]() {
-    TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
-    auto listener = TcpListener::bind(bind_ep);
-    if (!listener) {
-      return;
-    }
-    auto bound = listener->bound_port();
-    if (!bound) {
-      return;
-    }
-    port.store(*bound);
-
-    auto client = listener->accept();
-    if (!client) {
-      return;
-    }
-    server_ok.store(serve_relay_connection(*client, server_config).has_value());
-  });
-
-  while (port.load() == 0) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
-
-  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = port.load()});
+  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = server.port.load()});
   CHECK(socket.has_value());
   CHECK(exchange_valid_handshake(*socket));
 
@@ -149,42 +140,16 @@ TEST_CASE("relay server rejects invalid P2P checksum on the wire") {
   CHECK(socket->send_framed(wire).has_value());
 
   server.join();
-  CHECK(!server_ok.load());
+  CHECK(!server.completed_ok.load());
 }
 
 TEST_CASE("relay server rejects empty tx announce payload") {
   SocketLibrary lib;
 
-  std::atomic<std::uint16_t> port{0};
-  std::atomic<bool> server_ok{false};
+  RelayServerThread server(relay_server_config());
+  server.wait_for_port();
 
-  NodeConfig server_config;
-  server_config.network_mode = NetworkMode::kRelay;
-
-  std::thread server([&]() {
-    TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
-    auto listener = TcpListener::bind(bind_ep);
-    if (!listener) {
-      return;
-    }
-    auto bound = listener->bound_port();
-    if (!bound) {
-      return;
-    }
-    port.store(*bound);
-
-    auto client = listener->accept();
-    if (!client) {
-      return;
-    }
-    server_ok.store(serve_relay_connection(*client, server_config).has_value());
-  });
-
-  while (port.load() == 0) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
-
-  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = port.load()});
+  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = server.port.load()});
   CHECK(socket.has_value());
   CHECK(exchange_valid_handshake(*socket));
 
@@ -194,42 +159,16 @@ TEST_CASE("relay server rejects empty tx announce payload") {
   CHECK(send_message(*socket, message).has_value());
 
   server.join();
-  CHECK(!server_ok.load());
+  CHECK(!server.completed_ok.load());
 }
 
 TEST_CASE("relay server answers unknown block height with reject") {
   SocketLibrary lib;
 
-  std::atomic<std::uint16_t> port{0};
-  std::atomic<bool> server_ok{false};
+  RelayServerThread server(relay_server_config());
+  server.wait_for_port();
 
-  NodeConfig server_config;
-  server_config.network_mode = NetworkMode::kRelay;
-
-  std::thread server([&]() {
-    TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
-    auto listener = TcpListener::bind(bind_ep);
-    if (!listener) {
-      return;
-    }
-    auto bound = listener->bound_port();
-    if (!bound) {
-      return;
-    }
-    port.store(*bound);
-
-    auto client = listener->accept();
-    if (!client) {
-      return;
-    }
-    server_ok.store(serve_relay_connection(*client, server_config).has_value());
-  });
-
-  while (port.load() == 0) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
-
-  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = port.load()});
+  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = server.port.load()});
   CHECK(socket.has_value());
   CHECK(exchange_valid_handshake(*socket));
 
@@ -246,5 +185,70 @@ TEST_CASE("relay server answers unknown block height with reject") {
   socket->close();
 
   server.join();
-  CHECK(server_ok.load());
+  CHECK(server.completed_ok.load());
+}
+
+TEST_CASE("relay server rejects oversized frame length prefix") {
+  SocketLibrary lib;
+
+  RelayServerThread server(relay_server_config());
+  server.wait_for_port();
+
+  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = server.port.load()});
+  CHECK(socket.has_value());
+  CHECK(exchange_valid_handshake(*socket));
+
+  CHECK(socket->send_frame_length_prefix(kMaxP2pFrameBytes + 1U).has_value());
+  socket->close();
+
+  server.join();
+  CHECK(!server.completed_ok.load());
+}
+
+TEST_CASE("relay server rejects truncated frame body") {
+  SocketLibrary lib;
+
+  RelayServerThread server(relay_server_config());
+  server.wait_for_port();
+
+  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = server.port.load()});
+  CHECK(socket.has_value());
+  CHECK(exchange_valid_handshake(*socket));
+
+  constexpr std::uint32_t claimed_len = 512U;
+  CHECK(socket->send_frame_length_prefix(claimed_len).has_value());
+
+  const std::vector<std::byte> partial(16, std::byte{0xCD});
+  CHECK(socket->send_raw(partial).has_value());
+  socket->close();
+
+  server.join();
+  CHECK(!server.completed_ok.load());
+}
+
+TEST_CASE("relay server rejects disconnect mid-frame") {
+  SocketLibrary lib;
+
+  RelayServerThread server(relay_server_config());
+  server.wait_for_port();
+
+  auto socket = TcpSocket::connect(TcpEndpoint{.host = "127.0.0.1", .port = server.port.load()});
+  CHECK(socket.has_value());
+  CHECK(exchange_valid_handshake(*socket));
+
+  P2pMessage ping;
+  ping.version = kProtocolVersion;
+  ping.type = P2pMessageType::kPing;
+  ping.payload = {std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0},
+                  std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}};
+  const std::vector<std::byte> wire = ping.to_bytes();
+  CHECK(wire.size() > 8);
+
+  CHECK(socket->send_frame_length_prefix(static_cast<std::uint32_t>(wire.size())).has_value());
+  const std::span<const std::byte> partial(wire.data(), wire.size() / 2U);
+  CHECK(socket->send_raw(partial).has_value());
+  socket->close();
+
+  server.join();
+  CHECK(!server.completed_ok.load());
 }

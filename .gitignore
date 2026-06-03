@@ -51,6 +51,7 @@ docs/baselines/current*.json
 Thumbs.db
 
 docs/DESIGN.md
+docs/
 
 test_storage_*
 test_relay_persist_*

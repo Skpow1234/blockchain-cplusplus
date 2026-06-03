@@ -64,6 +64,11 @@ void close_native(NativeSocket handle) {
                std::string(context) + " (errno=" + std::to_string(socket_errno()) + ")"};
 }
 
+[[nodiscard]] bool recv_closed(const Error& err) noexcept {
+  return err.code == ErrorCode::kPeerMisbehavior &&
+         err.message.find("socket recv failed") != std::string::npos;
+}
+
 [[nodiscard]] Result<void> send_all_native(NativeSocket handle, std::span<const std::byte> data) {
   std::size_t sent = 0;
   while (sent < data.size()) {
@@ -206,6 +211,24 @@ Result<TcpSocket> TcpSocket::connect(const TcpEndpoint& endpoint) {
   return TcpSocket(static_cast<int>(from_native(handle)));
 }
 
+Result<void> TcpSocket::send_raw(std::span<const std::byte> data) const {
+  if (!valid()) {
+    return make_error(ErrorCode::kPeerMisbehavior, "socket is not connected");
+  }
+  if (data.empty()) {
+    return {};
+  }
+  return send_all_native(to_native(handle_), data);
+}
+
+Result<void> TcpSocket::send_frame_length_prefix(std::uint32_t len) const {
+  std::array<std::byte, 4> len_bytes{};
+  for (std::size_t i = 0; i < len_bytes.size(); ++i) {
+    len_bytes[i] = static_cast<std::byte>((len >> (8U * i)) & 0xFFU);
+  }
+  return send_raw(len_bytes);
+}
+
 Result<void> TcpSocket::send_framed(std::span<const std::byte> body) const {
   if (!valid()) {
     return make_error(ErrorCode::kPeerMisbehavior, "socket is not connected");
@@ -250,6 +273,9 @@ Result<std::vector<std::byte>> TcpSocket::recv_framed(std::uint32_t max_frame_by
   std::vector<std::byte> body(len);
   if (len > 0) {
     if (auto ok = recv_all_native(to_native(handle_), body); !ok) {
+      if (recv_closed(ok.error())) {
+        return make_error(ErrorCode::kInvalidMessage, "incomplete frame body");
+      }
       return std::unexpected(ok.error());
     }
   }

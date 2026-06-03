@@ -64,6 +64,12 @@ class TcpSocket {
   // Sends a length-prefixed frame (u32 little-endian + body).
   [[nodiscard]] Result<void> send_framed(std::span<const std::byte> body) const;
 
+  // Sends raw bytes on the TCP stream (no framing). Used for adversarial wire tests.
+  [[nodiscard]] Result<void> send_raw(std::span<const std::byte> data) const;
+
+  // Sends a u32 little-endian frame length prefix without a body.
+  [[nodiscard]] Result<void> send_frame_length_prefix(std::uint32_t len) const;
+
   // Receives a length-prefixed frame. Rejects lengths above max_frame_bytes
   // before allocating the body buffer.
   [[nodiscard]] Result<std::vector<std::byte>> recv_framed(
