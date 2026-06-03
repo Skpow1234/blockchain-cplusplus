@@ -99,6 +99,7 @@ TEST_CASE("simulator block production is deterministic for the same tx sequence"
     const Transaction spend = coinbase_spend_after_block1(config);
 
     SimulatorOptions options;
+    options.steps.push_back(SimulatorStep{.submit_txs = {}, .mine_blocks = 1});
     options.steps.push_back(SimulatorStep{.submit_txs = {spend}, .mine_blocks = 1});
 
     NodeConfig run = config;

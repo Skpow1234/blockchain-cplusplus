@@ -11,6 +11,7 @@
 using blockchain::ErrorCode;
 using blockchain::mempool::Mempool;
 using blockchain::mempool::MempoolLimits;
+using blockchain::mempool::MempoolPolicy;
 using blockchain::protocol::OutPoint;
 using blockchain::protocol::Transaction;
 using blockchain::protocol::TxInput;

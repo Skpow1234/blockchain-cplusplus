@@ -48,6 +48,21 @@ bool higher_feerate(const Mempool::Entry& a, const Mempool::Entry& b) {
   return Hash256Less{}(a.txid, b.txid);
 }
 
+// Strict fee-rate comparison without txid tie-break (used for eviction decisions).
+bool strictly_higher_feerate(const Mempool::Entry& a, const Mempool::Entry& b) {
+  std::uint64_t lhs_hi = 0;
+  std::uint64_t lhs_lo = 0;
+  std::uint64_t rhs_hi = 0;
+  std::uint64_t rhs_lo = 0;
+  mul_u64(a.fee, b.size_bytes, lhs_hi, lhs_lo);
+  mul_u64(b.fee, a.size_bytes, rhs_hi, rhs_lo);
+
+  if (lhs_hi != rhs_hi) {
+    return lhs_hi > rhs_hi;
+  }
+  return lhs_lo > rhs_lo;
+}
+
 // True if `a` has strictly lower feerate than `b`, or equal feerate with higher
 // txid (the entry evicted first when making room under byte/count limits).
 bool lower_feerate_for_eviction(const Mempool::Entry& a, const Mempool::Entry& b) {
@@ -101,7 +116,7 @@ Result<void> Mempool::accept(const protocol::Transaction& tx, const state::UtxoS
   while (by_txid_.size() + 1 > limits_.max_transactions ||
          total_bytes_ > limits_.max_total_bytes - incoming.size_bytes) {
     const Entry* worst = find_lowest_feerate(by_txid_);
-    if (worst == nullptr || !higher_feerate(incoming, *worst)) {
+    if (worst == nullptr || !strictly_higher_feerate(incoming, *worst)) {
       return make_error(ErrorCode::kResourceLimitExceeded, "mempool capacity limit reached");
     }
     remove(worst->txid);
