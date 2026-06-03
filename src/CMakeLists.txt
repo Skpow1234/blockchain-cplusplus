@@ -12,8 +12,10 @@ add_library(blockchain_core
   consensus/chain.cpp
   net/p2p_message.cpp
   net/p2p_payloads.cpp
+  net/socket_io.cpp
   node/config.cpp
   node/genesis.cpp
+  node/network.cpp
   node/simulator.cpp)
 
 target_include_directories(blockchain_core
@@ -21,6 +23,10 @@ target_include_directories(blockchain_core
 
 target_link_libraries(blockchain_core
   PRIVATE blockchain_warnings)
+
+if(WIN32)
+  target_link_libraries(blockchain_core PRIVATE ws2_32)
+endif()
 
 blockchain_enable_sanitizers(blockchain_core)
 

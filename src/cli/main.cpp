@@ -5,6 +5,7 @@
 
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/node/config.hpp"
+#include "blockchain/node/network.hpp"
 #include "blockchain/node/simulator.hpp"
 
 namespace {
@@ -19,6 +20,27 @@ int run(const std::vector<std::string>& args, std::string_view program) {
     std::cerr << "configuration error: " << config.error().message << "\n\n"
               << blockchain::node::usage(program);
     return 2;
+  }
+
+  if (blockchain::node::network_mode_enabled(*config)) {
+    if (config->listen_port != 0) {
+      auto ok = blockchain::node::run_ping_server(*config);
+      if (!ok) {
+        std::cerr << "network error: " << ok.error().message << "\n";
+        return 1;
+      }
+      std::cout << "ping server completed on " << config->listen_host << ":"
+                << config->listen_port << "\n";
+      return 0;
+    }
+    auto ok = blockchain::node::run_ping_client(*config);
+    if (!ok) {
+      std::cerr << "network error: " << ok.error().message << "\n";
+      return 1;
+    }
+    std::cout << "ping client completed (" << config->peer_host << ":" << config->peer_port
+              << ")\n";
+    return 0;
   }
 
   auto summary = blockchain::node::run_simulator(*config);

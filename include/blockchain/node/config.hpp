@@ -37,6 +37,12 @@ struct NodeConfig {
   // 64-character hex Hash256 for coinbase payouts; empty => all-zero recipient.
   std::string coinbase_recipient_hex;
 
+  // Stage-2 local TCP networking (no hardcoded ports or peers).
+  std::string listen_host = "127.0.0.1";
+  std::uint16_t listen_port = 0;
+  std::string peer_host;
+  std::uint16_t peer_port = 0;
+
   // Validates the configuration, returning a descriptive error on failure.
   [[nodiscard]] Result<void> validate() const;
 };

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "blockchain/crypto/hash.hpp"
+#include "blockchain/net/socket_io.hpp"
 
 namespace blockchain::node {
 namespace {
@@ -83,6 +84,10 @@ Result<void> NodeConfig::validate() const {
   if (!coinbase_recipient_hex.empty() && !crypto::hash_from_hex(coinbase_recipient_hex)) {
     return make_error(ErrorCode::kInvalidConfig,
                       "coinbase_recipient_hex must be a 64-character hex hash");
+  }
+  if (listen_port != 0 && peer_port != 0) {
+    return make_error(ErrorCode::kInvalidConfig,
+                      "specify either --listen-port or --peer, not both");
   }
   return {};
 }
@@ -183,6 +188,33 @@ Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
         return std::unexpected(value.error());
       }
       config.coinbase_recipient_hex = *value;
+    } else if (arg == "--listen-host") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      config.listen_host = *value;
+    } else if (arg == "--listen-port") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u32(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.listen_port = static_cast<std::uint16_t>(*parsed);
+    } else if (arg == "--peer") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto endpoint = net::parse_tcp_endpoint(*value);
+      if (!endpoint) {
+        return std::unexpected(endpoint.error());
+      }
+      config.peer_host = endpoint->host;
+      config.peer_port = endpoint->port;
     } else {
       return make_error(ErrorCode::kInvalidConfig, std::string("unknown argument: '") + arg + "'");
     }
@@ -209,6 +241,9 @@ std::string usage(std::string_view program) {
   out += "  --block-subsidy <amount>   Coinbase subsidy per block (default: protocol)\n";
   out += "  --coinbase-maturity <n>    Blocks before a coinbase may be spent (default: protocol)\n";
   out += "  --coinbase-recipient <hex> 64-char hex payout address (default: zero)\n";
+  out += "  --listen-host <ipv4>        Bind address for ping server (default: 127.0.0.1)\n";
+  out += "  --listen-port <port>        Run ping server on this port (accept one peer)\n";
+  out += "  --peer <host:port>         Connect as ping client to host:port\n";
   out += "  -h, --help                 Show this help and exit\n";
   return out;
 }
