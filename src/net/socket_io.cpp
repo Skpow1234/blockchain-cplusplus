@@ -4,6 +4,7 @@
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
+#include <csignal>
 #include <span>
 #include <string>
 #include <vector>
@@ -77,7 +78,7 @@ void close_native(NativeSocket handle) {
     const int rc = send(handle, reinterpret_cast<const char*>(chunk.data()),
                         static_cast<int>(chunk.size()), 0);
 #else
-    const auto rc = send(handle, chunk.data(), chunk.size(), 0);
+    const auto rc = send(handle, chunk.data(), chunk.size(), MSG_NOSIGNAL);
 #endif
     if (rc <= 0) {
       return std::unexpected(socket_error("socket send failed"));
@@ -129,7 +130,11 @@ SocketLibrary::SocketLibrary()
             return WSAStartup(MAKEWORD(2, 2), &data) == 0;
           }()
 #else
-          true
+          [] {
+            // Peers may close while we still send; default SIGPIPE would abort the process.
+            std::signal(SIGPIPE, SIG_IGN);
+            return true;
+          }()
 #endif
       ) {
 }

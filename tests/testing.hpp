@@ -60,9 +60,14 @@ class ScopedThread {
   ScopedThread& operator=(const ScopedThread&) = delete;
   ScopedThread& operator=(ScopedThread&&) = delete;
 
-  void join() {
-    if (thread_.joinable()) {
+  void join() noexcept {
+    if (!thread_.joinable()) {
+      return;
+    }
+    try {
       thread_.join();
+    } catch (...) {
+      // Do not let worker exceptions escape during CHECK unwind (that calls std::terminate).
     }
   }
 
