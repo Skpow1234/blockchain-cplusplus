@@ -121,7 +121,7 @@ namespace {
 }
 
 [[nodiscard]] bool is_regular_file(const std::string& path) {
-  const std::ifstream input(path, std::ios::binary | std::ios::ate);
+  std::ifstream input(path, std::ios::binary | std::ios::ate);
   if (!input) {
     return false;
   }
