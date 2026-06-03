@@ -61,6 +61,31 @@ constexpr std::uint64_t kRelayMempoolMaxBytes =
   return net::send_message(socket, *msg);
 }
 
+[[nodiscard]] Result<protocol::Block> parse_block_bytes(std::span<const std::byte> bytes) {
+  serialization::ByteReader reader(bytes);
+  auto block = protocol::Block::deserialize(reader);
+  if (!block) {
+    return std::unexpected(block.error());
+  }
+  if (auto end = reader.expect_end(); !end) {
+    return std::unexpected(end.error());
+  }
+  return *block;
+}
+
+[[nodiscard]] Result<protocol::Transaction> parse_transaction_bytes(
+    std::span<const std::byte> bytes) {
+  serialization::ByteReader reader(bytes);
+  auto tx = protocol::Transaction::deserialize(reader);
+  if (!tx) {
+    return std::unexpected(tx.error());
+  }
+  if (auto end = reader.expect_end(); !end) {
+    return std::unexpected(end.error());
+  }
+  return *tx;
+}
+
 }  // namespace
 
 PeerState::PeerState(consensus::Chain chain, mempool::Mempool mempool, std::string node_id,

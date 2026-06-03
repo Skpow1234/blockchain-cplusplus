@@ -60,8 +60,8 @@ void close_native(NativeSocket handle) {
 }
 
 [[nodiscard]] Error socket_error(std::string_view context) {
-  return Error(ErrorCode::kPeerMisbehavior,
-               std::string(context) + " (errno=" + std::to_string(socket_errno()) + ")");
+  return Error{ErrorCode::kPeerMisbehavior,
+               std::string(context) + " (errno=" + std::to_string(socket_errno()) + ")"};
 }
 
 [[nodiscard]] Result<void> send_all_native(NativeSocket handle, std::span<const std::byte> data) {
@@ -116,14 +116,17 @@ void close_native(NativeSocket handle) {
 
 }  // namespace
 
-SocketLibrary::SocketLibrary() {
+SocketLibrary::SocketLibrary()
+    : initialized_(
 #ifdef _WIN32
-  WSADATA data{};
-  if (WSAStartup(MAKEWORD(2, 2), &data) != 0) {
-    return;
-  }
+          [] {
+            WSADATA data{};
+            return WSAStartup(MAKEWORD(2, 2), &data) == 0;
+          }()
+#else
+          true
 #endif
-  initialized_ = true;
+      ) {
 }
 
 SocketLibrary::~SocketLibrary() {
@@ -203,7 +206,7 @@ Result<TcpSocket> TcpSocket::connect(const TcpEndpoint& endpoint) {
   return TcpSocket(static_cast<int>(from_native(handle)));
 }
 
-Result<void> TcpSocket::send_framed(std::span<const std::byte> body) {
+Result<void> TcpSocket::send_framed(std::span<const std::byte> body) const {
   if (!valid()) {
     return make_error(ErrorCode::kPeerMisbehavior, "socket is not connected");
   }
@@ -212,7 +215,7 @@ Result<void> TcpSocket::send_framed(std::span<const std::byte> body) {
   }
 
   std::array<std::byte, 4> len_bytes{};
-  const std::uint32_t len = static_cast<std::uint32_t>(body.size());
+  const auto len = static_cast<std::uint32_t>(body.size());
   for (std::size_t i = 0; i < len_bytes.size(); ++i) {
     len_bytes[i] = static_cast<std::byte>((len >> (8U * i)) & 0xFFU);
   }
@@ -226,7 +229,7 @@ Result<void> TcpSocket::send_framed(std::span<const std::byte> body) {
   return send_all_native(to_native(handle_), body);
 }
 
-Result<std::vector<std::byte>> TcpSocket::recv_framed(std::uint32_t max_frame_bytes) {
+Result<std::vector<std::byte>> TcpSocket::recv_framed(std::uint32_t max_frame_bytes) const {
   if (!valid()) {
     return make_error(ErrorCode::kPeerMisbehavior, "socket is not connected");
   }
@@ -318,7 +321,7 @@ Result<std::uint16_t> TcpListener::bound_port() const {
   return ntohs(addr.sin_port);
 }
 
-Result<TcpSocket> TcpListener::accept() {
+Result<TcpSocket> TcpListener::accept() const {
   if (handle_ < 0) {
     return make_error(ErrorCode::kPeerMisbehavior, "listener is not bound");
   }
