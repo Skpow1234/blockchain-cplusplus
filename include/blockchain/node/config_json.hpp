@@ -10,7 +10,7 @@
 namespace blockchain::node {
 
 // Maximum config file size before read (hostile input guard).
-inline constexpr std::size_t kMaxConfigFileBytes = 64uz * 1024uz;
+inline constexpr std::size_t kMaxConfigFileBytes = 64UZ * 1024UZ;
 
 // Parses a JSON object with known NodeConfig fields. Rejects unknown root types,
 // trailing garbage, and keys that do not map to configuration (except "_*").

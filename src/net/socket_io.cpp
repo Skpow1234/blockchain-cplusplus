@@ -132,7 +132,7 @@ SocketLibrary::SocketLibrary()
 #else
           [] {
             // Peers may close while we still send; default SIGPIPE would abort the process.
-            (void)std::signal(SIGPIPE, SIG_IGN);
+            static_cast<void>(std::signal(SIGPIPE, SIG_IGN));
             return true;
           }()
 #endif
