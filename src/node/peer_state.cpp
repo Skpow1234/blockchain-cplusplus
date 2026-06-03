@@ -203,31 +203,6 @@ Result<void> PeerState::mine_blocks(std::uint32_t count) {
   return persist_ledger();
 }
 
-Result<protocol::Block> PeerState::parse_block_bytes(std::span<const std::byte> bytes) const {
-  serialization::ByteReader reader(bytes);
-  auto block = protocol::Block::deserialize(reader);
-  if (!block) {
-    return std::unexpected(block.error());
-  }
-  if (auto end = reader.expect_end(); !end) {
-    return std::unexpected(end.error());
-  }
-  return *block;
-}
-
-Result<protocol::Transaction> PeerState::parse_transaction_bytes(
-    std::span<const std::byte> bytes) const {
-  serialization::ByteReader reader(bytes);
-  auto tx = protocol::Transaction::deserialize(reader);
-  if (!tx) {
-    return std::unexpected(tx.error());
-  }
-  if (auto end = reader.expect_end(); !end) {
-    return std::unexpected(end.error());
-  }
-  return *tx;
-}
-
 Result<void> PeerState::accept_transaction(const protocol::Transaction& tx) {
   if (auto sanity = validation::check_transaction_sanity(tx); !sanity) {
     return std::unexpected(sanity.error());
@@ -271,7 +246,7 @@ Result<void> PeerState::on_block_announce(std::span<const std::byte> payload_byt
 }
 
 Result<void> PeerState::on_block_request(const net::BlockRequestPayload& request,
-                                         net::TcpSocket& socket) {
+                                         net::TcpSocket& socket) const {
   const protocol::Block* block = block_at_height(request.height);
   if (block == nullptr) {
     return send_reject(socket, net::RejectCode::kInvalidMessage, "unknown block height");
@@ -299,7 +274,10 @@ Result<void> PeerState::handle_message(const net::P2pMessage& message, net::TcpS
       if (auto ok = on_tx_announce(
               std::span<const std::byte>(message.payload.data(), message.payload.size()));
           !ok) {
-        (void)send_reject(socket, net::RejectCode::kInvalidMessage, ok.error().message);
+        if (auto reject = send_reject(socket, net::RejectCode::kInvalidMessage, ok.error().message);
+            !reject) {
+          return reject;
+        }
         return ok;
       }
       return {};
@@ -341,7 +319,11 @@ Result<void> PeerState::handle_message(const net::P2pMessage& message, net::TcpS
     case net::P2pMessageType::kPong:
       return {};
     default:
-      (void)send_reject(socket, net::RejectCode::kInvalidMessage, "unsupported message type");
+      if (auto reject =
+              send_reject(socket, net::RejectCode::kInvalidMessage, "unsupported message type");
+          !reject) {
+        return reject;
+      }
       return make_error(ErrorCode::kInvalidMessage, "unsupported message type");
   }
 }

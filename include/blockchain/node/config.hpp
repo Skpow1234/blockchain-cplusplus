@@ -28,38 +28,25 @@ enum class NetworkMode : std::uint8_t {
 // hardcoded into the binary: every field is supplied via CLI flags (and later
 // config files) and validated before use.
 struct NodeConfig {
+  // Scalars grouped first to avoid excess padding between std::string members.
+  std::uint64_t genesis_timestamp = 0;
+  std::uint64_t block_subsidy = 0;
+  std::uint32_t max_block_size_bytes = 0;  // 0 => use protocol default
+  std::uint32_t mine_blocks = 0;
+  std::uint32_t mine_after_tx = 0;
+  std::uint32_t coinbase_maturity = 0;
+  std::uint16_t listen_port = 0;
+  std::uint16_t peer_port = 0;
+  LogLevel log_level = LogLevel::kInfo;
+  bool persist = false;
+  bool restore = false;
+  NetworkMode network_mode = NetworkMode::kPing;
+
   std::string node_id = "node-0";
   std::string data_dir = "./data";
-  LogLevel log_level = LogLevel::kInfo;
-
-  // Stage 3: persist the block ledger to data_dir/ledger.bin after a successful run.
-  bool persist = false;
-  // Reload chain state from data_dir/ledger.bin (full replay validation) instead of mining.
-  bool restore = false;
-
-  // Stage 1 (single-process simulator) parameters.
-  std::uint64_t genesis_timestamp = 0;
-  std::uint32_t max_block_size_bytes = 0;  // 0 => use protocol default
-
-  // Mine this many blocks after genesis (empty blocks if the mempool is empty).
-  // Timestamps are deterministic: genesis_timestamp + block height.
-  std::uint32_t mine_blocks = 0;
-
-  // Relay server: mine this many blocks after each accepted TxAnnounce.
-  std::uint32_t mine_after_tx = 0;
-
-  // Consensus economics. Zero means "use the documented protocol default".
-  std::uint64_t block_subsidy = 0;
-  std::uint32_t coinbase_maturity = 0;
-  // 64-character hex Hash256 for coinbase payouts; empty => all-zero recipient.
   std::string coinbase_recipient_hex;
-
-  // Stage-2 local TCP networking (no hardcoded ports or peers).
-  NetworkMode network_mode = NetworkMode::kPing;
   std::string listen_host = "127.0.0.1";
-  std::uint16_t listen_port = 0;
   std::string peer_host;
-  std::uint16_t peer_port = 0;
 
   // Validates the configuration, returning a descriptive error on failure.
   [[nodiscard]] Result<void> validate() const;

@@ -40,6 +40,8 @@ class SocketLibrary {
 
   SocketLibrary(const SocketLibrary&) = delete;
   SocketLibrary& operator=(const SocketLibrary&) = delete;
+  SocketLibrary(SocketLibrary&&) = delete;
+  SocketLibrary& operator=(SocketLibrary&&) = delete;
 
  private:
   bool initialized_ = false;
@@ -60,12 +62,12 @@ class TcpSocket {
   [[nodiscard]] bool valid() const noexcept;
 
   // Sends a length-prefixed frame (u32 little-endian + body).
-  [[nodiscard]] Result<void> send_framed(std::span<const std::byte> body);
+  [[nodiscard]] Result<void> send_framed(std::span<const std::byte> body) const;
 
   // Receives a length-prefixed frame. Rejects lengths above max_frame_bytes
   // before allocating the body buffer.
   [[nodiscard]] Result<std::vector<std::byte>> recv_framed(
-      std::uint32_t max_frame_bytes = kMaxP2pFrameBytes);
+      std::uint32_t max_frame_bytes = kMaxP2pFrameBytes) const;
 
   void close() noexcept;
 
@@ -93,7 +95,7 @@ class TcpListener {
   // Returns the port actually bound (after bind with port 0).
   [[nodiscard]] Result<std::uint16_t> bound_port() const;
 
-  [[nodiscard]] Result<TcpSocket> accept();
+  [[nodiscard]] Result<TcpSocket> accept() const;
 
   void close() noexcept;
 

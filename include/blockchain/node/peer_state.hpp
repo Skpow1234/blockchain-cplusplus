@@ -58,11 +58,8 @@ class PeerState {
   [[nodiscard]] Result<void> on_tx_announce(std::span<const std::byte> payload_bytes);
   [[nodiscard]] Result<void> on_block_announce(std::span<const std::byte> payload_bytes);
   [[nodiscard]] Result<void> on_block_request(const net::BlockRequestPayload& request,
-                                              net::TcpSocket& socket);
+                                              net::TcpSocket& socket) const;
   [[nodiscard]] Result<void> on_block_response(std::span<const std::byte> payload_bytes);
-  [[nodiscard]] Result<protocol::Block> parse_block_bytes(std::span<const std::byte> bytes) const;
-  [[nodiscard]] Result<protocol::Transaction> parse_transaction_bytes(
-      std::span<const std::byte> bytes) const;
 
   void store_block(std::uint32_t height, protocol::Block block);
 

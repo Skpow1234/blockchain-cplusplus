@@ -185,8 +185,8 @@ Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
 }
 
 Result<RelaySessionSummary> run_relay_server(const NodeConfig& config) {
-  net::SocketLibrary lib;
-  net::TcpEndpoint endpoint{.host = config.listen_host, .port = config.listen_port};
+  const net::SocketLibrary lib;
+  const net::TcpEndpoint endpoint{.host = config.listen_host, .port = config.listen_port};
 
   auto listener = net::TcpListener::bind(endpoint);
   if (!listener) {
@@ -203,8 +203,8 @@ Result<RelaySessionSummary> run_relay_server(const NodeConfig& config) {
 
 Result<RelayClientResult> run_relay_client(const NodeConfig& config,
                                            const RelayClientOptions& options) {
-  net::SocketLibrary lib;
-  net::TcpEndpoint endpoint{.host = config.peer_host, .port = config.peer_port};
+  const net::SocketLibrary lib;
+  const net::TcpEndpoint endpoint{.host = config.peer_host, .port = config.peer_port};
 
   auto socket = net::TcpSocket::connect(endpoint);
   if (!socket) {
@@ -281,8 +281,8 @@ Result<RelayClientResult> run_relay_client(const NodeConfig& config,
 }
 
 Result<void> run_ping_server(const NodeConfig& config) {
-  net::SocketLibrary lib;
-  net::TcpEndpoint endpoint{.host = config.listen_host, .port = config.listen_port};
+  const net::SocketLibrary lib;
+  const net::TcpEndpoint endpoint{.host = config.listen_host, .port = config.listen_port};
 
   auto listener = net::TcpListener::bind(endpoint);
   if (!listener) {
@@ -298,8 +298,8 @@ Result<void> run_ping_server(const NodeConfig& config) {
 }
 
 Result<void> run_ping_client(const NodeConfig& config) {
-  net::SocketLibrary lib;
-  net::TcpEndpoint endpoint{.host = config.peer_host, .port = config.peer_port};
+  const net::SocketLibrary lib;
+  const net::TcpEndpoint endpoint{.host = config.peer_host, .port = config.peer_port};
 
   auto socket = net::TcpSocket::connect(endpoint);
   if (!socket) {

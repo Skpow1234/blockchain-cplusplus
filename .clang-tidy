@@ -23,7 +23,11 @@ Checks: >
   -misc-non-private-member-variables-in-classes,
   -cppcoreguidelines-non-private-member-variables-in-classes,
   -bugprone-easily-swappable-parameters,
-  -readability-function-cognitive-complexity
+  -readability-function-cognitive-complexity,
+  -performance-enum-size,
+  -clang-analyzer-optin.performance.Padding,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -concurrency-mt-unsafe
 
 WarningsAsErrors: ''
 
