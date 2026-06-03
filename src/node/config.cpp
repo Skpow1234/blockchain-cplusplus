@@ -108,9 +108,9 @@ Result<void> NodeConfig::validate() const {
     return make_error(ErrorCode::kInvalidConfig,
                       "coinbase_recipient_hex must be a 64-character hex hash");
   }
-  if (listen_port != 0 && peer_port != 0) {
+  if (listen_enabled && peer_port != 0) {
     return make_error(ErrorCode::kInvalidConfig,
-                      "specify either --listen-port or --peer, not both");
+                      "specify either --listen-port (server) or --peer (client), not both");
   }
   if (relay_max_sessions == 0) {
     return make_error(ErrorCode::kInvalidConfig, "relay_max_sessions must be at least 1");
@@ -272,6 +272,13 @@ Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
         return std::unexpected(parsed.error());
       }
       config.listen_port = static_cast<std::uint16_t>(*parsed);
+      config.listen_enabled = true;
+    } else if (arg == "--port-file") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      config.port_file = *value;
     } else if (arg == "--persist") {
       config.persist = true;
     } else if (arg == "--restore") {
@@ -330,7 +337,8 @@ std::string usage(std::string_view program) {
   out += "  --coinbase-recipient <hex> 64-char hex payout address (default: zero)\n";
   out += "  --network-mode <mode>      ping|relay when using TCP (default: ping)\n";
   out += "  --listen-host <ipv4>        Bind address for TCP server (default: 127.0.0.1)\n";
-  out += "  --listen-port <port>        Run TCP server on this port\n";
+  out += "  --listen-port <port>        Run TCP server (0 = ephemeral port)\n";
+  out += "  --port-file <path>           Write bound listen port to this file after bind\n";
   out += "  --peer <host:port>         Connect as TCP client to host:port\n";
   out += "  -h, --help                 Show this help and exit\n";
   return out;

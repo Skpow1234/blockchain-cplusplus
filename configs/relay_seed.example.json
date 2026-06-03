@@ -1,0 +1,16 @@
+{
+  "_comment": "Relay seed node: bind ephemeral port, mine blocks, serve one peer. Use with local_network.sh.",
+  "node_id": "seed",
+  "data_dir": "./data/seed",
+  "log_level": "info",
+  "genesis_timestamp": 1700000100,
+  "block_subsidy": 5000,
+  "coinbase_maturity": 1,
+  "coinbase_recipient_hex": "a100000000000000000000000000000000000000000000000000000000000000",
+  "network_mode": "relay",
+  "mine_blocks": 2,
+  "listen_host": "127.0.0.1",
+  "listen_port": 0,
+  "persist": false,
+  "restore": false
+}

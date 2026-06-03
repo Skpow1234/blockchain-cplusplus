@@ -17,6 +17,8 @@ namespace blockchain::node {
 
 // Stage-2 local network: one-shot handshake + ping/pong over TCP using framed
 // P2P messages. Listens on --listen-host/--listen-port or connects via --peer.
+[[nodiscard]] bool is_network_server(const NodeConfig& config) noexcept;
+[[nodiscard]] bool is_network_client(const NodeConfig& config) noexcept;
 [[nodiscard]] bool network_mode_enabled(const NodeConfig& config) noexcept;
 
 // Serves one already-accepted TCP connection (handshake + ping/pong).

@@ -233,6 +233,10 @@ struct JsonParser {
     config.listen_host = value;
     return {};
   }
+  if (key == "port_file") {
+    config.port_file = value;
+    return {};
+  }
   if (key == "network_mode") {
     auto mode = parse_network_mode(value);
     if (!mode) {
@@ -294,6 +298,7 @@ struct JsonParser {
       return make_error(ErrorCode::kInvalidConfig, "listen_port out of range");
     }
     config.listen_port = static_cast<std::uint16_t>(value);
+    config.listen_enabled = true;
     return {};
   }
   return make_error(ErrorCode::kInvalidConfig,

@@ -32,3 +32,20 @@ blockchain_add_test(test_block_builder)
 blockchain_add_test(test_chain)
 blockchain_add_test(test_coinbase)
 blockchain_add_test(test_e2e)
+
+# Multi-process network integration (spawns blockchain_node).
+blockchain_add_test(test_multinode_process)
+target_compile_definitions(test_multinode_process PRIVATE
+  "BLOCKCHAIN_NODE_PATH=\"$<TARGET_FILE:blockchain_node>\"")
+add_dependencies(test_multinode_process blockchain_node)
+
+# Network tests bind localhost sockets; run serially to avoid cross-test races in CTest.
+set(_network_tests
+  test_tcp_ping
+  test_network_relay
+  test_adversarial_net
+  test_restart_integration
+  test_multinode_process)
+foreach(_net_test IN LISTS _network_tests)
+  set_tests_properties(${_net_test} PROPERTIES RUN_SERIAL TRUE)
+endforeach()

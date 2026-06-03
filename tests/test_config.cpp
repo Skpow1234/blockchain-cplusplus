@@ -98,3 +98,23 @@ TEST_CASE("persist and restore flags are parsed") {
   CHECK(config->persist);
   CHECK(config->restore);
 }
+
+TEST_CASE("listen-port enables server mode including ephemeral port zero") {
+  auto config = parse_args({"--listen-port", "0", "--network-mode", "relay"});
+  CHECK(config.has_value());
+  CHECK(config->listen_enabled);
+  CHECK_EQ(config->listen_port, static_cast<std::uint16_t>(0));
+}
+
+TEST_CASE("port-file flag is parsed") {
+  auto config = parse_args({"--listen-port", "0", "--port-file", "/tmp/port.txt"});
+  CHECK(config.has_value());
+  CHECK_EQ(config->port_file, std::string("/tmp/port.txt"));
+}
+
+TEST_CASE("listen and peer together are rejected") {
+  auto config =
+      parse_args({"--listen-port", "9000", "--peer", "127.0.0.1:9001", "--network-mode", "relay"});
+  CHECK(!config.has_value());
+  CHECK(config.error().code == ErrorCode::kInvalidConfig);
+}

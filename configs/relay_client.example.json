@@ -1,0 +1,15 @@
+{
+  "_comment": "Relay client: connect to seed via --peer (set at runtime). Persists synced chain locally.",
+  "node_id": "client",
+  "data_dir": "./data/client",
+  "log_level": "info",
+  "genesis_timestamp": 1700000100,
+  "block_subsidy": 5000,
+  "coinbase_maturity": 1,
+  "coinbase_recipient_hex": "a100000000000000000000000000000000000000000000000000000000000000",
+  "network_mode": "relay",
+  "mine_blocks": 0,
+  "persist": true,
+  "restore": false,
+  "peer": ""
+}

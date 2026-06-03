@@ -40,6 +40,8 @@ struct NodeConfig {
   std::uint16_t listen_port = 0;
   std::uint16_t peer_port = 0;
   LogLevel log_level = LogLevel::kInfo;
+  // True when --listen-port or JSON listen_port is set (port may be 0 for ephemeral bind).
+  bool listen_enabled = false;
   bool persist = false;
   bool restore = false;
   NetworkMode network_mode = NetworkMode::kPing;
@@ -49,6 +51,8 @@ struct NodeConfig {
   std::string coinbase_recipient_hex;
   std::string listen_host = "127.0.0.1";
   std::string peer_host;
+  // When set, the bound TCP port is written here after listen (for multi-process tests).
+  std::string port_file;
 
   // Validates the configuration, returning a descriptive error on failure.
   [[nodiscard]] Result<void> validate() const;

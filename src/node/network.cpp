@@ -1,5 +1,8 @@
 #include "blockchain/node/network.hpp"
 
+#include <fstream>
+#include <string>
+
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/net/p2p_message.hpp"
 #include "blockchain/net/p2p_payloads.hpp"
@@ -60,10 +63,42 @@ namespace {
   return config.genesis_timestamp != 0 ? config.genesis_timestamp : 1;
 }
 
+[[nodiscard]] Result<void> write_port_file(const std::string& path, std::uint16_t port) {
+  std::ofstream out(path, std::ios::trunc);
+  if (!out) {
+    return make_error(ErrorCode::kInvalidConfig, "failed to open port file for write: " + path);
+  }
+  out << port;
+  if (!out) {
+    return make_error(ErrorCode::kInvalidConfig, "failed to write port file: " + path);
+  }
+  return {};
+}
+
+[[nodiscard]] Result<void> publish_listen_port(const NodeConfig& config,
+                                               const RelayServerOptions& options,
+                                               std::uint16_t port) {
+  if (options.port_ready != nullptr) {
+    options.port_ready->store(port);
+  }
+  if (!config.port_file.empty()) {
+    return write_port_file(config.port_file, port);
+  }
+  return {};
+}
+
 }  // namespace
 
+bool is_network_server(const NodeConfig& config) noexcept {
+  return config.listen_enabled;
+}
+
+bool is_network_client(const NodeConfig& config) noexcept {
+  return config.peer_port != 0;
+}
+
 bool network_mode_enabled(const NodeConfig& config) noexcept {
-  return config.listen_port != 0 || config.peer_port != 0;
+  return is_network_server(config) || is_network_client(config);
 }
 
 Result<void> serve_ping_connection(net::TcpSocket& socket, const NodeConfig& config) {
@@ -209,8 +244,8 @@ Result<RelayServerResult> run_relay_server(const NodeConfig& config,
 
   RelayServerResult result;
   result.listen_port = *bound_port;
-  if (options.port_ready != nullptr) {
-    options.port_ready->store(*bound_port);
+  if (auto published = publish_listen_port(config, options, *bound_port); !published) {
+    return std::unexpected(published.error());
   }
 
   auto state = PeerState::from_config(config);
@@ -320,6 +355,14 @@ Result<void> run_ping_server(const NodeConfig& config) {
   auto listener = net::TcpListener::bind(endpoint);
   if (!listener) {
     return std::unexpected(listener.error());
+  }
+
+  auto bound_port = listener->bound_port();
+  if (!bound_port) {
+    return std::unexpected(bound_port.error());
+  }
+  if (auto published = publish_listen_port(config, {}, *bound_port); !published) {
+    return std::unexpected(published.error());
   }
 
   auto client = listener->accept();

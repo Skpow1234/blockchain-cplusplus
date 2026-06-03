@@ -53,6 +53,9 @@ Thumbs.db
 docs/DESIGN.md
 docs/
 
+test_multinode_*
+.local_network_run/
+
 test_storage_*
 test_simulator_*
 test_relay_persist_*
