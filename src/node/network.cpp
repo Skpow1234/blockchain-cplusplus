@@ -202,12 +202,22 @@ Result<RelayServerResult> run_relay_server(const NodeConfig& config,
     return std::unexpected(listener.error());
   }
 
+  auto bound_port = listener->bound_port();
+  if (!bound_port) {
+    return std::unexpected(bound_port.error());
+  }
+
+  RelayServerResult result;
+  result.listen_port = *bound_port;
+  if (options.port_ready != nullptr) {
+    options.port_ready->store(*bound_port);
+  }
+
   auto state = PeerState::from_config(config);
   if (!state) {
     return std::unexpected(state.error());
   }
 
-  RelayServerResult result;
   for (std::uint32_t n = 0; n < max_sessions; ++n) {
     auto client = listener->accept();
     if (!client) {

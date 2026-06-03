@@ -12,6 +12,8 @@
 #include <iostream>
 #include <span>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 
 namespace bctest {
@@ -45,6 +47,30 @@ inline void check(bool condition, const char* expr, const char* file, int line) 
 inline void fail(const std::string& why, const char* file, int line) {
   throw Failure{std::string(file) + ":" + std::to_string(line) + ": " + why};
 }
+
+// Joins a worker thread on scope exit so CHECK failures cannot leave joinable threads
+// (which would call std::terminate in the thread destructor).
+class ScopedThread {
+ public:
+  template <typename F>
+  explicit ScopedThread(F&& fn) : thread_(std::forward<F>(fn)) {}
+
+  ScopedThread(ScopedThread&& other) noexcept : thread_(std::move(other.thread_)) {}
+  ScopedThread(const ScopedThread&) = delete;
+  ScopedThread& operator=(const ScopedThread&) = delete;
+  ScopedThread& operator=(ScopedThread&&) = delete;
+
+  void join() {
+    if (thread_.joinable()) {
+      thread_.join();
+    }
+  }
+
+  ~ScopedThread() { join(); }
+
+ private:
+  std::thread thread_;
+};
 
 inline int run_all() {
   std::size_t failed = 0;

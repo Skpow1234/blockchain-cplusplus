@@ -19,11 +19,13 @@
 #include "blockchain/storage/chain_store.hpp"
 #include "testing.hpp"
 
+using bctest::ScopedThread;
 using blockchain::crypto::Hash256;
 using blockchain::crypto::to_hex;
 using blockchain::node::NetworkMode;
 using blockchain::node::NodeConfig;
 using blockchain::node::PeerState;
+using blockchain::node::RelayServerOptions;
 using blockchain::node::run_relay_client;
 using blockchain::node::run_relay_server;
 using blockchain::node::run_simulator;
@@ -59,6 +61,12 @@ std::string fresh_data_dir(const char* prefix) {
   return dir;
 }
 
+void wait_for_ephemeral_port(const std::atomic<std::uint16_t>& port) {
+  while (port.load() == 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
 }  // namespace
 
 TEST_CASE("simulator persist then relay restore serves chain to client") {
@@ -75,13 +83,7 @@ TEST_CASE("simulator persist then relay restore serves chain to client") {
   CHECK(mined.has_value());
   CHECK(ChainStore(dir).ledger_exists());
 
-  auto listener = blockchain::net::TcpListener::bind(
-      blockchain::net::TcpEndpoint{.host = "127.0.0.1", .port = 0});
-  CHECK(listener.has_value());
-  auto bound_port = listener->bound_port();
-  CHECK(bound_port.has_value());
-  listener->close();
-
+  std::atomic<std::uint16_t> port{0};
   std::atomic<bool> server_failed{true};
 
   NodeConfig server = seed;
@@ -89,14 +91,17 @@ TEST_CASE("simulator persist then relay restore serves chain to client") {
   server.restore = true;
   server.mine_blocks = 0;
   server.persist = false;
-  server.listen_port = *bound_port;
+  server.listen_port = 0;
 
-  std::thread server_thread([&]() {
-    auto result = run_relay_server(server);
+  RelayServerOptions options{.port_ready = &port};
+  ScopedThread server_thread([&]() {
+    auto result = run_relay_server(server, options);
     if (result && result->last_session.height == mined->height) {
       server_failed.store(false);
     }
   });
+
+  wait_for_ephemeral_port(port);
 
   NodeConfig client = seed;
   client.network_mode = NetworkMode::kRelay;
@@ -104,7 +109,7 @@ TEST_CASE("simulator persist then relay restore serves chain to client") {
   client.restore = false;
   client.persist = false;
   client.peer_host = "127.0.0.1";
-  client.peer_port = *bound_port;
+  client.peer_port = port.load();
 
   auto synced = run_relay_client(client);
   CHECK(synced.has_value());
@@ -127,32 +132,31 @@ TEST_CASE("relay session persist then peer state restore matches tip") {
 
   CHECK(run_simulator(seed).has_value());
 
-  auto listener = blockchain::net::TcpListener::bind(
-      blockchain::net::TcpEndpoint{.host = "127.0.0.1", .port = 0});
-  CHECK(listener.has_value());
-  const std::uint16_t port = *listener->bound_port();
-  listener->close();
+  std::atomic<std::uint16_t> port{0};
+  std::atomic<bool> server_failed{true};
 
   NodeConfig server = seed;
   server.network_mode = NetworkMode::kRelay;
   server.restore = true;
   server.mine_blocks = 0;
   server.persist = true;
-  server.listen_port = port;
+  server.listen_port = 0;
 
-  std::atomic<bool> server_failed{true};
-  std::thread server_thread([&]() {
-    if (run_relay_server(server).has_value()) {
+  RelayServerOptions options{.port_ready = &port};
+  ScopedThread server_thread([&]() {
+    if (run_relay_server(server, options).has_value()) {
       server_failed.store(false);
     }
   });
+
+  wait_for_ephemeral_port(port);
 
   NodeConfig client = seed;
   client.network_mode = NetworkMode::kRelay;
   client.mine_blocks = 0;
   client.persist = false;
   client.peer_host = "127.0.0.1";
-  client.peer_port = port;
+  client.peer_port = port.load();
 
   CHECK(run_relay_client(client).has_value());
 

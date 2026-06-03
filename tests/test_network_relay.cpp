@@ -19,6 +19,7 @@
 #include "blockchain/protocol/transaction.hpp"
 #include "testing.hpp"
 
+using bctest::ScopedThread;
 using blockchain::crypto::Hash256;
 using blockchain::crypto::to_hex;
 using blockchain::node::NetworkMode;
@@ -78,6 +79,12 @@ Transaction coinbase_spend_after_block1(const NodeConfig& config) {
   return make_spend(coinbase_out, config.block_subsidy, 100, tag_hash(0xB2));
 }
 
+void wait_for_ephemeral_port(const std::atomic<std::uint16_t>& port) {
+  while (port.load() == 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
 }  // namespace
 
 TEST_CASE("relay client syncs a mined block from the server") {
@@ -91,7 +98,7 @@ TEST_CASE("relay client syncs a mined block from the server") {
   server_config.network_mode = NetworkMode::kRelay;
   server_config.mine_blocks = 1;
 
-  std::thread server([&]() {
+  ScopedThread server([&]() {
     blockchain::net::TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
     auto listener = blockchain::net::TcpListener::bind(bind_ep);
     if (!listener) {
@@ -146,7 +153,7 @@ TEST_CASE("relay client catches up across multiple mined blocks") {
   server_config.network_mode = NetworkMode::kRelay;
   server_config.mine_blocks = 3;
 
-  std::thread server([&]() {
+  ScopedThread server([&]() {
     blockchain::net::TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
     auto listener = blockchain::net::TcpListener::bind(bind_ep);
     if (!listener) {
@@ -205,7 +212,7 @@ TEST_CASE("relay client tx announce is admitted on the server") {
   server_config.network_mode = NetworkMode::kRelay;
   server_config.mine_blocks = 1;
 
-  std::thread server([&]() {
+  ScopedThread server([&]() {
     blockchain::net::TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
     auto listener = blockchain::net::TcpListener::bind(bind_ep);
     if (!listener) {
@@ -269,7 +276,7 @@ TEST_CASE("relay server mines announced tx and client syncs the new block") {
   server_config.mine_blocks = 1;
   server_config.mine_after_tx = 1;
 
-  std::thread server([&]() {
+  ScopedThread server([&]() {
     blockchain::net::TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
     auto listener = blockchain::net::TcpListener::bind(bind_ep);
     if (!listener) {
@@ -356,7 +363,7 @@ TEST_CASE("relay server restores from disk and serves blocks to a peer") {
   server_config.persist = false;
   server_config.network_mode = NetworkMode::kRelay;
 
-  std::thread server([&]() {
+  ScopedThread server([&]() {
     blockchain::net::TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
     auto listener = blockchain::net::TcpListener::bind(bind_ep);
     if (!listener) {
@@ -397,34 +404,30 @@ TEST_CASE("relay server restores from disk and serves blocks to a peer") {
 TEST_CASE("relay server serves two sequential peer connections") {
   blockchain::net::SocketLibrary lib;
 
-  auto listener = blockchain::net::TcpListener::bind(
-      blockchain::net::TcpEndpoint{.host = "127.0.0.1", .port = 0});
-  CHECK(listener.has_value());
-  auto bound_port = listener->bound_port();
-  CHECK(bound_port.has_value());
-  listener->close();
-
+  std::atomic<std::uint16_t> port{0};
   std::atomic<bool> server_failed{true};
 
   NodeConfig server_config = relay_test_config();
   server_config.network_mode = NetworkMode::kRelay;
   server_config.mine_blocks = 1;
-  server_config.listen_port = *bound_port;
+  server_config.listen_port = 0;
   server_config.relay_max_sessions = 2;
 
-  std::thread server([&]() {
-    RelayServerOptions options{.max_sessions = 2};
+  RelayServerOptions options{.max_sessions = 2, .port_ready = &port};
+  ScopedThread server([&]() {
     auto result = run_relay_server(server_config, options);
     if (result && result->sessions_completed == 2) {
       server_failed.store(false);
     }
   });
 
+  wait_for_ephemeral_port(port);
+
   NodeConfig client_config = server_config;
   client_config.mine_blocks = 0;
   client_config.persist = false;
   client_config.peer_host = "127.0.0.1";
-  client_config.peer_port = *bound_port;
+  client_config.peer_port = port.load();
 
   auto first = run_relay_client(client_config);
   CHECK(first.has_value());
@@ -442,24 +445,18 @@ TEST_CASE("relay server serves two sequential peer connections") {
 TEST_CASE("relay server shares chain state across sequential sessions") {
   blockchain::net::SocketLibrary lib;
 
-  auto listener = blockchain::net::TcpListener::bind(
-      blockchain::net::TcpEndpoint{.host = "127.0.0.1", .port = 0});
-  CHECK(listener.has_value());
-  auto bound_port = listener->bound_port();
-  CHECK(bound_port.has_value());
-  listener->close();
-
+  std::atomic<std::uint16_t> port{0};
   std::atomic<bool> server_failed{true};
 
   NodeConfig server_config = relay_test_config();
   server_config.network_mode = NetworkMode::kRelay;
   server_config.mine_blocks = 1;
   server_config.mine_after_tx = 1;
-  server_config.listen_port = *bound_port;
+  server_config.listen_port = 0;
   server_config.relay_max_sessions = 2;
 
-  std::thread server([&]() {
-    RelayServerOptions options{.max_sessions = 2};
+  RelayServerOptions options{.max_sessions = 2, .port_ready = &port};
+  ScopedThread server([&]() {
     auto result = run_relay_server(server_config, options);
     if (result && result->sessions_completed == 2 &&
         result->last_session.height == static_cast<std::uint32_t>(2)) {
@@ -467,12 +464,14 @@ TEST_CASE("relay server shares chain state across sequential sessions") {
     }
   });
 
+  wait_for_ephemeral_port(port);
+
   NodeConfig client_config = server_config;
   client_config.mine_blocks = 0;
   client_config.mine_after_tx = 0;
   client_config.persist = false;
   client_config.peer_host = "127.0.0.1";
-  client_config.peer_port = *bound_port;
+  client_config.peer_port = port.load();
 
   const Transaction spend = coinbase_spend_after_block1(server_config);
   RelayClientOptions mine_options;

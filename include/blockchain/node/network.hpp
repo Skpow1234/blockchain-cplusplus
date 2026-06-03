@@ -1,6 +1,8 @@
 #ifndef BLOCKCHAIN_NODE_NETWORK_HPP
 #define BLOCKCHAIN_NODE_NETWORK_HPP
 
+#include <atomic>
+#include <cstdint>
 #include <span>
 #include <vector>
 
@@ -49,10 +51,13 @@ struct RelayClientOptions {
 struct RelayServerOptions {
   // Number of sequential accept/serve cycles before the listener closes.
   std::uint32_t max_sessions = 1;
+  // When non-null, set to the bound port after listen (for ephemeral port tests).
+  std::atomic<std::uint16_t>* port_ready = nullptr;
 };
 
 struct RelayServerResult {
   std::uint32_t sessions_completed = 0;
+  std::uint16_t listen_port = 0;
   RelaySessionSummary last_session;
 };
 

@@ -92,6 +92,12 @@ struct RelayServerThread {
   }
 
   void join() { worker.join(); }
+
+  ~RelayServerThread() {
+    if (worker.joinable()) {
+      worker.join();
+    }
+  }
 };
 
 [[nodiscard]] NodeConfig relay_server_config() {

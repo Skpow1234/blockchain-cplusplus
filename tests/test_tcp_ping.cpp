@@ -28,7 +28,7 @@ TEST_CASE("localhost ping server and client exchange handshake and pong") {
   server_config.node_id = "server";
   server_config.genesis_timestamp = 42;
 
-  std::thread server([&]() {
+  bctest::ScopedThread server([&]() {
     TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
     auto listener = TcpListener::bind(bind_ep);
     if (!listener) {
@@ -76,7 +76,7 @@ TEST_CASE("framed send and recv round-trip bytes") {
   std::atomic<bool> done{false};
   const std::vector<std::byte> payload = {std::byte{1}, std::byte{2}, std::byte{3}};
 
-  std::thread server([&]() {
+  bctest::ScopedThread server([&]() {
     auto client = listener->accept();
     if (client) {
       auto got = client->recv_framed();
