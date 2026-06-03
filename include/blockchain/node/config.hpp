@@ -25,8 +25,8 @@ enum class NetworkMode : std::uint8_t {
 [[nodiscard]] std::string_view to_string(NetworkMode mode);
 
 // Runtime configuration for a node/simulator instance. Nothing here is
-// hardcoded into the binary: every field is supplied via CLI flags (and later
-// config files) and validated before use.
+// hardcoded into the binary: fields come from CLI flags and/or a JSON config
+// file (--config) and are validated before use.
 struct NodeConfig {
   // Scalars grouped first to avoid excess padding between std::string members.
   std::uint64_t genesis_timestamp = 0;

@@ -55,14 +55,14 @@ TEST_CASE("parse_config_json rejects unknown keys") {
 }
 
 TEST_CASE("parse_config_json rejects trailing garbage") {
-  const std::string json = R"({ "node_id": "x" }) trailing";
+  const std::string json = R"json({ "node_id": "x" }) trailingjson";
   auto config = parse_config_json(json);
   CHECK(!config.has_value());
 }
 
 TEST_CASE("CLI overrides JSON config file values") {
   const std::string path = "test_config_json_override.json";
-  write_text(path, R"json({ "node_id": "from-file", "mine_blocks": 1 })json");
+  write_text(path, "{\"node_id\": \"from-file\", \"mine_blocks\": 1}");
 
   auto config = parse_args({"--config", path, "--node-id", "from-cli", "--mine-blocks", "9"});
   CHECK(config.has_value());
