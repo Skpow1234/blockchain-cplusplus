@@ -54,7 +54,7 @@
     {
       "name": "fuzz",
       "inherits": "base",
-      "comment": "Requires a Clang toolchain; set CC/CXX to clang/clang++ (libFuzzer).",
+      "description": "Requires a Clang toolchain; set CC/CXX to clang/clang++ (libFuzzer).",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BLOCKCHAIN_BUILD_FUZZERS": "ON",
