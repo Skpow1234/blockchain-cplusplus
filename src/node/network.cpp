@@ -175,6 +175,9 @@ Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,
   if (auto loop = relay_message_loop(socket, *state); !loop) {
     return std::unexpected(loop.error());
   }
+  if (auto saved = state->persist_ledger(); !saved) {
+    return std::unexpected(saved.error());
+  }
   return make_relay_summary(*state);
 }
 
@@ -240,6 +243,24 @@ Result<RelayClientResult> run_relay_client(const NodeConfig& config,
   if (!options.txs_after_sync.empty()) {
     if (auto sent = send_tx_announces(*socket, options.txs_after_sync); !sent) {
       return std::unexpected(sent.error());
+    }
+  }
+
+  for (std::uint32_t n = 0; n < options.blocks_after_tx; ++n) {
+    const std::uint32_t height = state->height() + 1;
+    auto request = net::make_block_request_message(net::BlockRequestPayload{.height = height});
+    if (!request) {
+      return std::unexpected(request.error());
+    }
+    if (auto sent = net::send_message(*socket, *request); !sent) {
+      return std::unexpected(sent.error());
+    }
+    auto inbound = net::recv_message(*socket);
+    if (!inbound) {
+      return std::unexpected(inbound.error());
+    }
+    if (auto ok = state->handle_message(*inbound, *socket); !ok) {
+      return std::unexpected(ok.error());
     }
   }
 

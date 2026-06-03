@@ -45,6 +45,9 @@ struct NodeConfig {
   // Timestamps are deterministic: genesis_timestamp + block height.
   std::uint32_t mine_blocks = 0;
 
+  // Relay server: mine this many blocks after each accepted TxAnnounce.
+  std::uint32_t mine_after_tx = 0;
+
   // Consensus economics. Zero means "use the documented protocol default".
   std::uint64_t block_subsidy = 0;
   std::uint32_t coinbase_maturity = 0;

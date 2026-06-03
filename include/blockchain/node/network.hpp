@@ -41,6 +41,8 @@ struct RelayClientResult {
 struct RelayClientOptions {
   // Transactions to announce on the wire after block sync completes.
   std::vector<protocol::Transaction> txs_after_sync;
+  // After tx announces, request this many additional blocks from the peer.
+  std::uint32_t blocks_after_tx = 0;
 };
 
 [[nodiscard]] Result<RelaySessionSummary> serve_relay_connection(net::TcpSocket& socket,

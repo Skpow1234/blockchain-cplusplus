@@ -308,16 +308,21 @@ Result<void> ChainStore::save_ledger(std::span<const protocol::Block> blocks,
                            std::span<const std::byte>(encoded->data(), encoded->size()));
 }
 
-Result<consensus::Chain> ChainStore::load_chain() {
+Result<std::pair<std::vector<protocol::Block>, consensus::ConsensusParams>>
+ChainStore::load_ledger() {
   auto bytes = read_file(ledger_path(data_dir_));
   if (!bytes) {
     return std::unexpected(bytes.error());
   }
-  auto decoded = decode_ledger(std::span<const std::byte>(bytes->data(), bytes->size()));
-  if (!decoded) {
-    return std::unexpected(decoded.error());
+  return decode_ledger(std::span<const std::byte>(bytes->data(), bytes->size()));
+}
+
+Result<consensus::Chain> ChainStore::load_chain() {
+  auto ledger = load_ledger();
+  if (!ledger) {
+    return std::unexpected(ledger.error());
   }
-  return replay_chain(decoded->first, decoded->second);
+  return replay_chain(ledger->first, ledger->second);
 }
 
 }  // namespace blockchain::storage

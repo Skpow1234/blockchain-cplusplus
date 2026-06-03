@@ -3,9 +3,11 @@
 
 #include <cstdint>
 #include <map>
+#include <string>
 #include <vector>
 
 #include "blockchain/consensus/chain.hpp"
+#include "blockchain/consensus/params.hpp"
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/error.hpp"
 #include "blockchain/mempool/mempool.hpp"
@@ -13,6 +15,7 @@
 #include "blockchain/net/p2p_payloads.hpp"
 #include "blockchain/net/socket_io.hpp"
 #include "blockchain/node/config.hpp"
+#include "blockchain/production/block_builder.hpp"
 #include "blockchain/protocol/block.hpp"
 
 namespace blockchain::node {
@@ -31,17 +34,26 @@ class PeerState {
   [[nodiscard]] bool mempool_contains(const crypto::Hash256& txid) const;
 
   // Processes one inbound P2P message. May send zero or more replies on `socket`.
-  // Returns an error when the message is malformed or violates protocol rules.
   [[nodiscard]] Result<void> handle_message(const net::P2pMessage& message, net::TcpSocket& socket);
 
-  // Validates and admits a transaction to the mempool against the current chain UTXO set.
   [[nodiscard]] Result<void> accept_transaction(const protocol::Transaction& tx);
 
-  // Looks up a block previously connected to this node's chain.
+  // Mines `count` blocks on top of the current tip using the mempool and local config.
+  [[nodiscard]] Result<void> mine_blocks(std::uint32_t count);
+
+  // Writes the catalog to data_dir/ledger.bin when persist is enabled in config.
+  [[nodiscard]] Result<void> persist_ledger() const;
+
   [[nodiscard]] const protocol::Block* block_at_height(std::uint32_t height) const noexcept;
 
  private:
-  PeerState(consensus::Chain chain, mempool::Mempool mempool, std::string node_id);
+  PeerState(consensus::Chain chain, mempool::Mempool mempool, std::string node_id,
+              std::uint64_t genesis_timestamp, consensus::ConsensusParams consensus,
+              production::BlockTemplateParams tmpl_params, std::string data_dir, bool persist,
+              std::uint32_t mine_after_tx);
+
+  [[nodiscard]] Result<void> connect_block(protocol::Block block);
+  [[nodiscard]] std::vector<protocol::Block> ledger_blocks() const;
 
   [[nodiscard]] Result<void> on_tx_announce(std::span<const std::byte> payload_bytes);
   [[nodiscard]] Result<void> on_block_announce(std::span<const std::byte> payload_bytes);
@@ -57,6 +69,12 @@ class PeerState {
   consensus::Chain chain_;
   mempool::Mempool mempool_;
   std::string node_id_;
+  std::uint64_t genesis_timestamp_ = 0;
+  consensus::ConsensusParams consensus_{};
+  production::BlockTemplateParams tmpl_params_{};
+  std::string data_dir_;
+  bool persist_ = false;
+  std::uint32_t mine_after_tx_ = 0;
   std::map<std::uint32_t, protocol::Block> catalog_;
 };
 

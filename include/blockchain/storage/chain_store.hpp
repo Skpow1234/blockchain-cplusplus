@@ -33,6 +33,10 @@ class ChainStore {
   // Deserializes ledger.bin and rebuilds chain state by replaying every block.
   [[nodiscard]] Result<consensus::Chain> load_chain();
 
+  // Returns the validated block list and consensus params stored on disk.
+  [[nodiscard]] Result<std::pair<std::vector<protocol::Block>, consensus::ConsensusParams>>
+  load_ledger();
+
   // Serializes or deserializes the ledger wire format (for tests and fuzzing).
   [[nodiscard]] static Result<std::vector<std::byte>> encode_ledger(
       std::span<const protocol::Block> blocks, const consensus::ConsensusParams& params);

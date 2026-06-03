@@ -53,3 +53,4 @@ Thumbs.db
 docs/DESIGN.md
 
 test_storage_*
+test_relay_persist_*

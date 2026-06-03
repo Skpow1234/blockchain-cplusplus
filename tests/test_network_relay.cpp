@@ -1,7 +1,14 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <thread>
+
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#endif
 
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/net/socket_io.hpp"
@@ -240,4 +247,97 @@ TEST_CASE("relay client tx announce is admitted on the server") {
   server.join();
   CHECK(!server_failed.load());
   CHECK_EQ(server_mempool_size.load(), static_cast<std::size_t>(1));
+}
+
+TEST_CASE("relay server mines announced tx and client syncs the new block") {
+  blockchain::net::SocketLibrary lib;
+
+  std::atomic<std::uint16_t> port{0};
+  std::atomic<std::uint32_t> server_height{0};
+  std::atomic<bool> server_failed{false};
+
+  NodeConfig server_config = relay_test_config();
+  server_config.node_id = "relay-server";
+  server_config.network_mode = NetworkMode::kRelay;
+  server_config.mine_blocks = 1;
+  server_config.mine_after_tx = 1;
+
+  std::thread server([&]() {
+    blockchain::net::TcpEndpoint bind_ep{.host = "127.0.0.1", .port = 0};
+    auto listener = blockchain::net::TcpListener::bind(bind_ep);
+    if (!listener) {
+      server_failed.store(true);
+      return;
+    }
+    auto bound = listener->bound_port();
+    if (!bound) {
+      server_failed.store(true);
+      return;
+    }
+    port.store(*bound);
+
+    auto client = listener->accept();
+    if (!client) {
+      server_failed.store(true);
+      return;
+    }
+    auto summary = serve_relay_connection(*client, server_config);
+    if (!summary) {
+      server_failed.store(true);
+      return;
+    }
+    server_height.store(summary->height);
+  });
+
+  while (port.load() == 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  NodeConfig client_config = server_config;
+  client_config.node_id = "relay-client";
+  client_config.mine_blocks = 0;
+  client_config.mine_after_tx = 0;
+  client_config.peer_host = "127.0.0.1";
+  client_config.peer_port = port.load();
+
+  const Transaction spend = coinbase_spend_after_block1(server_config);
+  RelayClientOptions options;
+  options.txs_after_sync.push_back(spend);
+  options.blocks_after_tx = 1;
+
+  auto result = run_relay_client(client_config, options);
+  CHECK(result.has_value());
+  CHECK_EQ(result->height, static_cast<std::uint32_t>(2));
+
+  server.join();
+  CHECK(!server_failed.load());
+  CHECK_EQ(server_height.load(), static_cast<std::uint32_t>(2));
+}
+
+TEST_CASE("relay persist and restore reloads the same tip") {
+  const std::string dir = "test_relay_persist_1";
+  (void)std::remove((dir + "/ledger.bin").c_str());
+#ifdef _WIN32
+  (void)_mkdir(dir.c_str());
+#else
+  (void)mkdir(dir.c_str(), 0755);
+#endif
+
+  NodeConfig config = relay_test_config();
+  config.data_dir = dir;
+  config.mine_blocks = 2;
+  config.persist = true;
+
+  auto first = PeerState::from_config(config);
+  CHECK(first.has_value());
+  const Hash256 tip = first->tip_hash();
+
+  config.restore = true;
+  config.mine_blocks = 0;
+  config.persist = false;
+
+  auto second = PeerState::from_config(config);
+  CHECK(second.has_value());
+  CHECK(second->tip_hash() == tip);
+  CHECK_EQ(second->height(), static_cast<std::uint32_t>(2));
 }

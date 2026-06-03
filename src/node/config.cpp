@@ -173,6 +173,16 @@ Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
         return std::unexpected(parsed.error());
       }
       config.max_block_size_bytes = static_cast<std::uint32_t>(*parsed);
+    } else if (arg == "--mine-after-tx") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u32(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.mine_after_tx = *parsed;
     } else if (arg == "--mine-blocks") {
       auto value = require_value(arg);
       if (!value) {
@@ -275,6 +285,7 @@ std::string usage(std::string_view program) {
   out += "  --genesis-timestamp <n>    Deterministic genesis timestamp (default: 0)\n";
   out += "  --max-block-size <bytes>   Override max block size (default: protocol limit)\n";
   out += "  --mine-blocks <n>          Mine n blocks after genesis (default: 0)\n";
+  out += "  --mine-after-tx <n>        Relay: mine n blocks after each tx announce (default: 0)\n";
   out += "  --block-subsidy <amount>   Coinbase subsidy per block (default: protocol)\n";
   out += "  --coinbase-maturity <n>    Blocks before a coinbase may be spent (default: protocol)\n";
   out += "  --coinbase-recipient <hex> 64-char hex payout address (default: zero)\n";
