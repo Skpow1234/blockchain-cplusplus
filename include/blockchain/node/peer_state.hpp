@@ -44,6 +44,10 @@ class PeerState {
   // Writes the catalog to data_dir/ledger.bin when persist is enabled in config.
   [[nodiscard]] Result<void> persist_ledger() const;
 
+  // Writes the catalog to data_dir/ledger.bin regardless of the persist flag
+  // (used when a relay client finishes syncing with --persist).
+  [[nodiscard]] Result<void> save_ledger() const;
+
   [[nodiscard]] const protocol::Block* block_at_height(std::uint32_t height) const noexcept;
 
  private:

@@ -340,7 +340,7 @@ Result<RelayClientResult> run_relay_client(const NodeConfig& config,
   }
 
   if (config.persist) {
-    if (auto saved = state->persist_ledger(); !saved) {
+    if (auto saved = state->save_ledger(); !saved) {
       return std::unexpected(saved.error());
     }
   }

@@ -4,8 +4,8 @@
 // Minimal cross-platform child process helper for multi-process integration tests.
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <string>
 #include <thread>
@@ -15,8 +15,10 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#include <io.h>
 #include <process.h>
 #include <windows.h>
+#define access _access
 #else
 #include <signal.h>
 #include <sys/types.h>
@@ -112,23 +114,21 @@ inline ChildProcess spawn_process(const std::vector<std::string>& args) {
   return child;
 }
 
-inline bool wait_for_file(const std::filesystem::path& path,
-                          std::chrono::milliseconds timeout = std::chrono::seconds(10)) {
+inline bool wait_for_port_file(const std::string& path,
+                               std::chrono::milliseconds timeout = std::chrono::seconds(10)) {
   const auto deadline = std::chrono::steady_clock::now() + timeout;
   while (std::chrono::steady_clock::now() < deadline) {
-    if (std::filesystem::exists(path)) {
-      std::ifstream in(path);
-      std::uint16_t port = 0;
-      if (in >> port && port != 0) {
-        return true;
-      }
+    std::ifstream in(path);
+    std::uint32_t port = 0;
+    if (in >> port && port != 0) {
+      return true;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   return false;
 }
 
-inline std::uint16_t read_port_file(const std::filesystem::path& path) {
+inline std::uint16_t read_port_file(const std::string& path) {
   std::ifstream in(path);
   std::uint32_t port = 0;
   in >> port;

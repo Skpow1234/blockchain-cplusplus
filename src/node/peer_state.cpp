@@ -200,6 +200,10 @@ Result<void> PeerState::persist_ledger() const {
   if (!persist_) {
     return {};
   }
+  return save_ledger();
+}
+
+Result<void> PeerState::save_ledger() const {
   storage::ChainStore store(data_dir_);
   return store.save_ledger(ledger_blocks(), consensus_);
 }
