@@ -50,5 +50,4 @@ docs/baselines/current*.json
 .DS_Store
 Thumbs.db
 
-
 docs/DESIGN.md
