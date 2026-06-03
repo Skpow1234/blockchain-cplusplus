@@ -166,4 +166,18 @@ std::vector<Mempool::Entry> Mempool::entries_by_feerate() const {
   return out;
 }
 
+std::vector<protocol::Transaction> Mempool::sorted_transactions() const {
+  std::vector<protocol::Transaction> out;
+  out.reserve(by_txid_.size());
+  for (const auto& [txid, entry] : by_txid_) {
+    (void)txid;
+    out.push_back(entry.transaction);
+  }
+  std::sort(out.begin(), out.end(), [](const protocol::Transaction& a,
+                                       const protocol::Transaction& b) {
+    return Hash256Less{}(a.txid(), b.txid());
+  });
+  return out;
+}
+
 }  // namespace blockchain::mempool

@@ -84,10 +84,10 @@ TEST_CASE("decode rejects unsupported ledger format version") {
       ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
   CHECK(err.has_value());
 
-  (*encoded)[4] = std::byte{0x02};
+  (*encoded)[4] = std::byte{0x63};
   err = ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
   CHECK(!err.has_value());
-  CHECK(err.error().code == ErrorCode::kStorageCorruption);
+  CHECK(err.error().code == ErrorCode::kUnsupportedVersion);
 }
 
 TEST_CASE("save rejects non-contiguous block heights") {

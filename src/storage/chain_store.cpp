@@ -22,6 +22,7 @@
 
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/protocol/constants.hpp"
+#include "blockchain/protocol/transaction.hpp"
 #include "blockchain/serialization/byte_io.hpp"
 #include "blockchain/storage/ledger_format.hpp"
 
@@ -61,6 +62,33 @@ namespace {
     return std::unexpected(end.error());
   }
   return *block;
+}
+
+[[nodiscard]] Result<void> put_transaction(serialization::ByteWriter& writer,
+                                           const protocol::Transaction& tx) {
+  const std::vector<std::byte> bytes = tx.to_bytes();
+  if (bytes.size() > protocol::kMaxTransactionSizeBytes) {
+    return make_error(ErrorCode::kResourceLimitExceeded,
+                      "transaction exceeds maximum encoded size");
+  }
+  writer.put_var_bytes(std::span<const std::byte>(bytes.data(), bytes.size()));
+  return {};
+}
+
+[[nodiscard]] Result<protocol::Transaction> get_transaction(serialization::ByteReader& reader) {
+  auto raw = reader.get_var_bytes(protocol::kMaxTransactionSizeBytes);
+  if (!raw) {
+    return std::unexpected(raw.error());
+  }
+  serialization::ByteReader tx_reader(std::span<const std::byte>(raw->data(), raw->size()));
+  auto tx = protocol::Transaction::deserialize(tx_reader);
+  if (!tx) {
+    return std::unexpected(tx.error());
+  }
+  if (auto end = tx_reader.expect_end(); !end) {
+    return std::unexpected(end.error());
+  }
+  return *tx;
 }
 
 [[nodiscard]] Result<void> validate_block_sequence(std::span<const protocol::Block> blocks) {
@@ -201,9 +229,13 @@ bool ChainStore::ledger_exists() const {
 }
 
 Result<std::vector<std::byte>> ChainStore::encode_ledger(std::span<const protocol::Block> blocks,
-                                                         const consensus::ConsensusParams& params) {
+                                                         const consensus::ConsensusParams& params,
+                                                         std::span<const protocol::Transaction> mempool) {
   if (blocks.size() > kMaxLedgerBlocks) {
     return make_error(ErrorCode::kResourceLimitExceeded, "too many blocks for ledger");
+  }
+  if (mempool.size() > kMaxLedgerMempoolTransactions) {
+    return make_error(ErrorCode::kResourceLimitExceeded, "too many mempool transactions for ledger");
   }
 
   serialization::ByteWriter writer;
@@ -219,6 +251,13 @@ Result<std::vector<std::byte>> ChainStore::encode_ledger(std::span<const protoco
     }
   }
 
+  writer.put_u32(static_cast<std::uint32_t>(mempool.size()));
+  for (const protocol::Transaction& tx : mempool) {
+    if (auto ok = put_transaction(writer, tx); !ok) {
+      return std::unexpected(ok.error());
+    }
+  }
+
   const std::vector<std::byte> body = writer.data();
   const std::uint32_t checksum = ledger_checksum(body);
   serialization::ByteWriter with_checksum;
@@ -227,8 +266,7 @@ Result<std::vector<std::byte>> ChainStore::encode_ledger(std::span<const protoco
   return with_checksum.data();
 }
 
-Result<std::pair<std::vector<protocol::Block>, consensus::ConsensusParams>>
-ChainStore::decode_ledger(std::span<const std::byte> bytes) {
+Result<LedgerData> ChainStore::decode_ledger(std::span<const std::byte> bytes) {
   if (bytes.size() < sizeof(std::uint32_t)) {
     return make_error(ErrorCode::kStorageCorruption, "ledger file is too short");
   }
@@ -251,7 +289,10 @@ ChainStore::decode_ledger(std::span<const std::byte> bytes) {
     return make_error(ErrorCode::kStorageCorruption, "ledger magic mismatch");
   }
   auto version = reader.get_u32();
-  if (!version || *version != kLedgerFormatVersion) {
+  if (!version) {
+    return std::unexpected(version.error());
+  }
+  if (*version != kLedgerFormatVersion && *version != kLedgerFormatVersion1) {
     return make_error(ErrorCode::kUnsupportedVersion, "unsupported ledger format version");
   }
   auto subsidy = reader.get_u64();
@@ -284,22 +325,45 @@ ChainStore::decode_ledger(std::span<const std::byte> bytes) {
     blocks.push_back(std::move(*block));
   }
 
+  LedgerData ledger;
+  ledger.blocks = std::move(blocks);
+  ledger.params = params;
+
+  if (*version >= kLedgerFormatVersion) {
+    auto mempool_count = reader.get_u32();
+    if (!mempool_count) {
+      return std::unexpected(mempool_count.error());
+    }
+    if (*mempool_count > kMaxLedgerMempoolTransactions) {
+      return make_error(ErrorCode::kStorageCorruption, "ledger mempool count out of range");
+    }
+    ledger.mempool_transactions.reserve(*mempool_count);
+    for (std::uint32_t i = 0; i < *mempool_count; ++i) {
+      auto tx = get_transaction(reader);
+      if (!tx) {
+        return std::unexpected(tx.error());
+      }
+      ledger.mempool_transactions.push_back(std::move(*tx));
+    }
+  }
+
   if (auto end = reader.expect_end(); !end) {
     return std::unexpected(end.error());
   }
 
-  if (auto ok = validate_block_sequence(blocks); !ok) {
+  if (auto ok = validate_block_sequence(ledger.blocks); !ok) {
     return std::unexpected(ok.error());
   }
-  return std::pair{std::move(blocks), params};
+  return ledger;
 }
 
 Result<void> ChainStore::save_ledger(std::span<const protocol::Block> blocks,
-                                     const consensus::ConsensusParams& params) {
+                                     const consensus::ConsensusParams& params,
+                                     std::span<const protocol::Transaction> mempool) {
   if (auto ok = validate_block_sequence(blocks); !ok) {
     return ok;
   }
-  auto encoded = encode_ledger(blocks, params);
+  auto encoded = encode_ledger(blocks, params, mempool);
   if (!encoded) {
     return std::unexpected(encoded.error());
   }
@@ -312,8 +376,7 @@ Result<void> ChainStore::save_ledger(std::span<const protocol::Block> blocks,
                            std::span<const std::byte>(encoded->data(), encoded->size()));
 }
 
-Result<std::pair<std::vector<protocol::Block>, consensus::ConsensusParams>>
-ChainStore::load_ledger() {
+Result<LedgerData> ChainStore::load_ledger() {
   auto bytes = read_file(ledger_path(data_dir_));
   if (!bytes) {
     return std::unexpected(bytes.error());
@@ -326,7 +389,7 @@ Result<consensus::Chain> ChainStore::load_chain() {
   if (!ledger) {
     return std::unexpected(ledger.error());
   }
-  return replay_chain(ledger->first, ledger->second);
+  return replay_chain(ledger->blocks, ledger->params);
 }
 
 }  // namespace blockchain::storage

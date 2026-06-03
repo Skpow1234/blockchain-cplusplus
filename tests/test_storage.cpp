@@ -15,12 +15,15 @@
 #include "blockchain/consensus/params.hpp"
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/error.hpp"
+#include "blockchain/mempool/mempool.hpp"
+#include "blockchain/mempool/restore.hpp"
 #include "blockchain/node/config.hpp"
 #include "blockchain/node/genesis.hpp"
 #include "blockchain/node/simulator.hpp"
 #include "blockchain/production/block_builder.hpp"
 #include "blockchain/protocol/block.hpp"
 #include "blockchain/protocol/constants.hpp"
+#include "blockchain/protocol/transaction.hpp"
 #include "blockchain/storage/chain_store.hpp"
 #include "testing.hpp"
 
@@ -35,6 +38,11 @@ using blockchain::node::run_simulator;
 using blockchain::production::BlockTemplateParams;
 using blockchain::production::build_block_template;
 using blockchain::protocol::Block;
+using blockchain::protocol::OutPoint;
+using blockchain::protocol::Transaction;
+using blockchain::protocol::TxInput;
+using blockchain::protocol::TxOutput;
+using blockchain::state::UtxoSet;
 using blockchain::storage::ChainStore;
 
 namespace {
@@ -85,8 +93,9 @@ TEST_CASE("ledger encode and decode round-trip") {
   auto decoded =
       ChainStore::decode_ledger(std::span<const std::byte>(encoded->data(), encoded->size()));
   CHECK(decoded.has_value());
-  CHECK_EQ(decoded->first.size(), static_cast<std::size_t>(2));
-  CHECK_EQ(decoded->second.block_subsidy, static_cast<std::uint64_t>(500));
+  CHECK_EQ(decoded->blocks.size(), static_cast<std::size_t>(2));
+  CHECK_EQ(decoded->params.block_subsidy, static_cast<std::uint64_t>(500));
+  CHECK(decoded->mempool_transactions.empty());
 }
 
 TEST_CASE("chain store save and load replays validation") {
@@ -188,4 +197,58 @@ TEST_CASE("truncated ledger file is rejected") {
   auto err = store.load_chain();
   CHECK(!err.has_value());
   CHECK(err.error().code == ErrorCode::kStorageCorruption);
+}
+
+TEST_CASE("ledger v2 persists and restores mempool transactions") {
+  const std::string dir = temp_data_dir();
+  const ConsensusParams consensus{.block_subsidy = 500, .coinbase_maturity = 1};
+  NodeConfig config;
+  config.genesis_timestamp = 99;
+  config.coinbase_maturity = 1;
+  config.block_subsidy = 500;
+
+  const Block genesis = build_genesis_block(config);
+  auto chain = Chain::create(genesis, consensus);
+  CHECK(chain.has_value());
+
+  Mempool pool(MempoolLimits{.max_transactions = 10, .max_total_bytes = 1U << 20U});
+  auto tmpl =
+      build_block_template(chain->tip(), 100, pool, chain->utxos(), template_params(consensus));
+  CHECK(tmpl.has_value());
+  CHECK(chain->submit_block(tmpl->block).has_value());
+
+  OutPoint funded;
+  funded.txid = tmpl->block.transactions.front().txid();
+  funded.index = 0;
+
+  const UtxoSet utxos = chain->utxos();
+  Transaction spend;
+  TxInput input;
+  input.prevout = funded;
+  spend.inputs.push_back(input);
+  TxOutput output;
+  output.value = 400;
+  spend.outputs.push_back(output);
+  CHECK(pool.accept(spend, utxos).has_value());
+
+  const std::vector<Block> blocks = {genesis, tmpl->block};
+  const std::vector<Transaction> mempool_txs = pool.sorted_transactions();
+  CHECK_EQ(mempool_txs.size(), static_cast<std::size_t>(1));
+
+  ChainStore store(dir);
+  CHECK(store.save_ledger(blocks, consensus, mempool_txs).has_value());
+
+  auto loaded = store.load_ledger();
+  CHECK(loaded.has_value());
+  CHECK_EQ(loaded->mempool_transactions.size(), static_cast<std::size_t>(1));
+  CHECK(loaded->mempool_transactions.front().txid() == spend.txid());
+
+  auto replayed = store.load_chain();
+  CHECK(replayed.has_value());
+
+  Mempool restored_pool(MempoolLimits{.max_transactions = 10, .max_total_bytes = 1U << 20U});
+  CHECK(blockchain::mempool::restore_mempool(restored_pool, replayed->utxos(),
+                                             loaded->mempool_transactions)
+            .has_value());
+  CHECK(restored_pool.contains(spend.txid()));
 }

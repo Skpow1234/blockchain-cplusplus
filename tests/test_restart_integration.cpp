@@ -16,6 +16,7 @@
 #include "blockchain/node/network.hpp"
 #include "blockchain/node/peer_state.hpp"
 #include "blockchain/node/simulator.hpp"
+#include "blockchain/protocol/transaction.hpp"
 #include "blockchain/storage/chain_store.hpp"
 #include "testing.hpp"
 
@@ -28,6 +29,8 @@ using blockchain::node::PeerState;
 using blockchain::node::RelayServerOptions;
 using blockchain::node::run_relay_client;
 using blockchain::node::run_relay_server;
+using blockchain::node::SimulatorOptions;
+using blockchain::node::SimulatorStep;
 using blockchain::node::run_simulator;
 using blockchain::storage::ChainStore;
 
@@ -176,4 +179,55 @@ TEST_CASE("relay session persist then peer state restore matches tip") {
   auto reloaded_chain = ChainStore(dir).load_chain();
   CHECK(reloaded_chain.has_value());
   CHECK(reloaded_chain->tip_hash() == state->tip_hash());
+}
+
+TEST_CASE("simulator persist and restore preserves pending mempool transactions") {
+  const std::string dir = fresh_data_dir("test_restart_mempool_");
+
+  NodeConfig config = integration_config();
+  config.data_dir = dir;
+  config.coinbase_maturity = 1;
+  config.block_subsidy = 5'000;
+  config.persist = true;
+
+  auto bootstrap = PeerState::from_config([&]() {
+    NodeConfig miner = config;
+    miner.mine_blocks = 1;
+    return miner;
+  }());
+  CHECK(bootstrap.has_value());
+
+  const auto* block1 = bootstrap->block_at_height(1);
+  CHECK(block1 != nullptr);
+
+  blockchain::protocol::OutPoint coinbase_out;
+  coinbase_out.txid = block1->transactions.front().txid();
+  coinbase_out.index = 0;
+
+  blockchain::protocol::Transaction spend;
+  blockchain::protocol::TxInput input;
+  input.prevout = coinbase_out;
+  spend.inputs.push_back(input);
+  blockchain::protocol::TxOutput output;
+  output.value = 4'900;
+  spend.outputs.push_back(output);
+
+  blockchain::node::SimulatorOptions options;
+  options.steps.push_back({.submit_txs = {}, .mine_blocks = 1});
+  options.steps.push_back({.submit_txs = {spend}, .mine_blocks = 0});
+
+  NodeConfig run = config;
+  run.mine_blocks = 0;
+  auto first = run_simulator(run, options);
+  CHECK(first.has_value());
+
+  NodeConfig reload = config;
+  reload.restore = true;
+  reload.mine_blocks = 0;
+  reload.persist = false;
+
+  auto state = PeerState::from_config(reload);
+  CHECK(state.has_value());
+  CHECK(state->mempool_contains(spend.txid()));
+  CHECK_EQ(state->mempool_size(), static_cast<std::size_t>(1));
 }

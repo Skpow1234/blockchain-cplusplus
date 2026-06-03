@@ -9,8 +9,16 @@
 #include "blockchain/consensus/params.hpp"
 #include "blockchain/error.hpp"
 #include "blockchain/protocol/block.hpp"
+#include "blockchain/protocol/transaction.hpp"
 
 namespace blockchain::storage {
+
+// Validated ledger contents loaded from disk.
+struct LedgerData {
+  std::vector<protocol::Block> blocks;
+  consensus::ConsensusParams params;
+  std::vector<protocol::Transaction> mempool_transactions;
+};
 
 // Persists the canonical block sequence for a node and reloads it by full
 // consensus replay. The block list is the source of truth; nothing is trusted
@@ -28,20 +36,20 @@ class ChainStore {
 
   // Writes ledger.bin atomically. `blocks` must be height-ordered from genesis.
   [[nodiscard]] Result<void> save_ledger(std::span<const protocol::Block> blocks,
-                                         const consensus::ConsensusParams& params);
+                                         const consensus::ConsensusParams& params,
+                                         std::span<const protocol::Transaction> mempool = {});
 
   // Deserializes ledger.bin and rebuilds chain state by replaying every block.
   [[nodiscard]] Result<consensus::Chain> load_chain();
 
-  // Returns the validated block list and consensus params stored on disk.
-  [[nodiscard]] Result<std::pair<std::vector<protocol::Block>, consensus::ConsensusParams>>
-  load_ledger();
+  // Returns validated blocks, consensus params, and optional mempool snapshot.
+  [[nodiscard]] Result<LedgerData> load_ledger();
 
   // Serializes or deserializes the ledger wire format (for tests and fuzzing).
   [[nodiscard]] static Result<std::vector<std::byte>> encode_ledger(
-      std::span<const protocol::Block> blocks, const consensus::ConsensusParams& params);
-  [[nodiscard]] static Result<std::pair<std::vector<protocol::Block>, consensus::ConsensusParams>>
-  decode_ledger(std::span<const std::byte> bytes);
+      std::span<const protocol::Block> blocks, const consensus::ConsensusParams& params,
+      std::span<const protocol::Transaction> mempool = {});
+  [[nodiscard]] static Result<LedgerData> decode_ledger(std::span<const std::byte> bytes);
 
  private:
   std::string data_dir_;

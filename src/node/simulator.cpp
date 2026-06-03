@@ -3,7 +3,7 @@
 #include "blockchain/consensus/chain.hpp"
 #include "blockchain/consensus/params.hpp"
 #include "blockchain/crypto/hash.hpp"
-#include "blockchain/mempool/mempool.hpp"
+#include "blockchain/mempool/restore.hpp"
 #include "blockchain/node/genesis.hpp"
 #include "blockchain/production/block_builder.hpp"
 #include "blockchain/protocol/constants.hpp"
@@ -163,6 +163,8 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config, const Simulator
   RunStats stats;
   bool restored = false;
 
+  std::vector<protocol::Transaction> restored_mempool_txs;
+
   auto chain_result = [&]() -> Result<consensus::Chain> {
     if (!config.restore) {
       ledger.push_back(genesis);
@@ -177,20 +179,21 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config, const Simulator
     if (!loaded) {
       return std::unexpected(loaded.error());
     }
-    if (!consensus_params_match(consensus, loaded->second)) {
+    if (!consensus_params_match(consensus, loaded->params)) {
       return make_error(ErrorCode::kStorageCorruption,
                         "restored consensus parameters do not match configuration");
     }
-    if (loaded->first.front().header.hash() != genesis.header.hash()) {
+    if (loaded->blocks.front().header.hash() != genesis.header.hash()) {
       return make_error(ErrorCode::kStorageCorruption,
                         "restored genesis does not match configuration");
     }
 
-    auto replayed = replay_loaded_chain(loaded->first, loaded->second);
+    auto replayed = replay_loaded_chain(loaded->blocks, loaded->params);
     if (!replayed) {
       return std::unexpected(replayed.error());
     }
-    ledger = std::move(loaded->first);
+    ledger = loaded->blocks;
+    restored_mempool_txs = std::move(loaded->mempool_transactions);
     restored = true;
     return *replayed;
   }();
@@ -198,6 +201,13 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config, const Simulator
     return std::unexpected(chain_result.error());
   }
   consensus::Chain chain = std::move(*chain_result);
+
+  if (restored) {
+    if (auto ok = mempool::restore_mempool(pool, chain.utxos(), restored_mempool_txs, pool_policy);
+        !ok) {
+      return std::unexpected(ok.error());
+    }
+  }
 
   if (!options.steps.empty()) {
     for (const SimulatorStep& step : options.steps) {
@@ -219,7 +229,7 @@ Result<SimulatorSummary> run_simulator(const NodeConfig& config, const Simulator
 
   if (config.persist) {
     storage::ChainStore store(config.data_dir);
-    if (auto saved = store.save_ledger(ledger, consensus); !saved) {
+    if (auto saved = store.save_ledger(ledger, consensus, pool.sorted_transactions()); !saved) {
       return std::unexpected(saved.error());
     }
   }

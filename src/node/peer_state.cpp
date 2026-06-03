@@ -129,8 +129,15 @@ Result<PeerState> PeerState::from_config(const NodeConfig& config) {
     PeerState state(std::move(*chain), std::move(pool), pool_policy, config.node_id,
                     config.genesis_timestamp, consensus, tmpl_params, config.data_dir,
                     config.persist, config.mine_after_tx);
-    for (const protocol::Block& block : ledger->first) {
+    for (const protocol::Block& block : ledger->blocks) {
       state.store_block(block.header.height, block);
+    }
+    for (const protocol::Transaction& tx : ledger->mempool_transactions) {
+      if (auto ok = state.accept_transaction(tx); !ok) {
+        return make_error(ErrorCode::kStorageCorruption,
+                          "stored mempool transaction failed re-validation: " +
+                              ok.error().message);
+      }
     }
     return state;
   }
@@ -205,7 +212,7 @@ Result<void> PeerState::persist_ledger() const {
 
 Result<void> PeerState::save_ledger() const {
   storage::ChainStore store(data_dir_);
-  return store.save_ledger(ledger_blocks(), consensus_);
+  return store.save_ledger(ledger_blocks(), consensus_, mempool_.sorted_transactions());
 }
 
 Result<void> PeerState::connect_block(protocol::Block block) {

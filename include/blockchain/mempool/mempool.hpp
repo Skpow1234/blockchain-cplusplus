@@ -83,6 +83,9 @@ class Mempool {
   // (fee per byte) first, ties broken by ascending txid.
   [[nodiscard]] std::vector<Entry> entries_by_feerate() const;
 
+  // Canonical export for persistence: ascending txid order.
+  [[nodiscard]] std::vector<protocol::Transaction> sorted_transactions() const;
+
  private:
   MempoolLimits limits_;
   std::map<crypto::Hash256, Entry, Hash256Less> by_txid_;
