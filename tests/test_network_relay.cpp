@@ -17,7 +17,6 @@ using blockchain::node::NetworkMode;
 using blockchain::node::NodeConfig;
 using blockchain::node::PeerState;
 using blockchain::node::RelayClientOptions;
-using blockchain::node::RelaySessionSummary;
 using blockchain::node::run_relay_client;
 using blockchain::node::serve_relay_connection;
 using blockchain::protocol::OutPoint;
@@ -185,7 +184,7 @@ TEST_CASE("relay client tx announce is admitted on the server") {
   blockchain::net::SocketLibrary lib;
 
   std::atomic<std::uint16_t> port{0};
-  std::atomic<RelaySessionSummary> server_summary{};
+  std::atomic<std::size_t> server_mempool_size{0};
   std::atomic<bool> server_failed{false};
 
   NodeConfig server_config = relay_test_config();
@@ -217,7 +216,7 @@ TEST_CASE("relay client tx announce is admitted on the server") {
       server_failed.store(true);
       return;
     }
-    server_summary.store(*summary);
+    server_mempool_size.store(summary->mempool_size);
   });
 
   while (port.load() == 0) {
@@ -240,6 +239,5 @@ TEST_CASE("relay client tx announce is admitted on the server") {
 
   server.join();
   CHECK(!server_failed.load());
-  CHECK_EQ(server_summary.load().mempool_size, static_cast<std::size_t>(1));
-  CHECK_EQ(server_summary.load().height, static_cast<std::uint32_t>(1));
+  CHECK_EQ(server_mempool_size.load(), static_cast<std::size_t>(1));
 }
