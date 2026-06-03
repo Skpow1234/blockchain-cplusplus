@@ -5,15 +5,13 @@
 
 #include "blockchain/crypto/hash.hpp"
 #include "blockchain/node/config.hpp"
-#include "blockchain/node/genesis.hpp"
-#include "blockchain/protocol/block.hpp"
+#include "blockchain/node/simulator.hpp"
 
 namespace {
 
 int run(const std::vector<std::string>& args, std::string_view program) {
   auto config = blockchain::node::parse_args(args);
   if (!config) {
-    // --help is reported as a handled "error"; treat it as success.
     if (config.error().message == "help requested") {
       std::cout << blockchain::node::usage(program);
       return 0;
@@ -23,15 +21,22 @@ int run(const std::vector<std::string>& args, std::string_view program) {
     return 2;
   }
 
-  const blockchain::protocol::Block genesis = blockchain::node::build_genesis_block(*config);
+  auto summary = blockchain::node::run_simulator(*config);
+  if (!summary) {
+    std::cerr << "simulator error: " << summary.error().message << "\n";
+    return 1;
+  }
 
   std::cout << "blockchain simulator (stage 1)\n"
-            << "  node id:       " << config->node_id << "\n"
-            << "  data dir:      " << config->data_dir << "\n"
-            << "  log level:     " << blockchain::node::to_string(config->log_level) << "\n"
-            << "  genesis time:  " << config->genesis_timestamp << "\n"
-            << "  genesis hash:  " << blockchain::crypto::to_hex(genesis.header.hash()) << "\n"
-            << "  genesis txs:   " << genesis.transactions.size() << "\n";
+            << "  node id:        " << config->node_id << "\n"
+            << "  data dir:       " << config->data_dir << "\n"
+            << "  log level:      " << blockchain::node::to_string(config->log_level) << "\n"
+            << "  genesis time:   " << config->genesis_timestamp << "\n"
+            << "  genesis hash:   " << blockchain::crypto::to_hex(summary->genesis_hash) << "\n"
+            << "  blocks mined:   " << summary->blocks_mined << "\n"
+            << "  chain height:   " << summary->height << "\n"
+            << "  tip hash:       " << blockchain::crypto::to_hex(summary->tip_hash) << "\n"
+            << "  utxo set size:  " << summary->utxo_count << "\n";
   return 0;
 }
 

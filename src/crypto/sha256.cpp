@@ -3,8 +3,10 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 
 #include "blockchain/crypto/hash.hpp"
+#include "blockchain/error.hpp"
 
 // Self-contained SHA-256 (FIPS 180-4). Implemented in-tree to avoid external
 // dependencies and to guarantee deterministic, portable behavior. This is a
@@ -147,6 +149,42 @@ Hash256 sha256(std::span<const std::byte> data) {
 Hash256 sha256d(std::span<const std::byte> data) {
   const Hash256 first = sha256(data);
   return sha256(std::span<const std::byte>(first.data(), first.size()));
+}
+
+namespace {
+
+[[nodiscard]] bool hex_digit(char c, std::uint8_t& out) {
+  if (c >= '0' && c <= '9') {
+    out = static_cast<std::uint8_t>(c - '0');
+    return true;
+  }
+  if (c >= 'a' && c <= 'f') {
+    out = static_cast<std::uint8_t>(c - 'a' + 10);
+    return true;
+  }
+  if (c >= 'A' && c <= 'F') {
+    out = static_cast<std::uint8_t>(c - 'A' + 10);
+    return true;
+  }
+  return false;
+}
+
+}  // namespace
+
+Result<Hash256> hash_from_hex(std::string_view hex) {
+  if (hex.size() != 64) {
+    return make_error(ErrorCode::kParseError, "hash hex must be exactly 64 characters");
+  }
+  Hash256 hash{};
+  for (std::size_t i = 0; i < hash.size(); ++i) {
+    std::uint8_t hi = 0;
+    std::uint8_t lo = 0;
+    if (!hex_digit(hex[i * 2], hi) || !hex_digit(hex[i * 2 + 1], lo)) {
+      return make_error(ErrorCode::kParseError, "hash hex contains invalid characters");
+    }
+    hash[i] = static_cast<std::byte>((hi << 4U) | lo);
+  }
+  return hash;
 }
 
 std::string to_hex(const Hash256& hash) {

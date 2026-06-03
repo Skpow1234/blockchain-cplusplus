@@ -1,6 +1,7 @@
 #include "blockchain/crypto/hash.hpp"
 #include "testing.hpp"
 
+using blockchain::crypto::hash_from_hex;
 using blockchain::crypto::sha256;
 using blockchain::crypto::sha256d;
 using blockchain::crypto::to_hex;
@@ -32,4 +33,17 @@ TEST_CASE("sha256d equals sha256 of sha256") {
 TEST_CASE("sha256 is deterministic") {
   CHECK_EQ(to_hex(sha256(bctest::as_bytes("determinism"))),
            to_hex(sha256(bctest::as_bytes("determinism"))));
+}
+
+TEST_CASE("hash_from_hex round-trips to_hex") {
+  const auto hash = hash_from_hex(
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  CHECK(hash.has_value());
+  CHECK_EQ(to_hex(*hash),
+           "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+}
+
+TEST_CASE("hash_from_hex rejects invalid input") {
+  CHECK(!hash_from_hex("not-a-hash").has_value());
+  CHECK(!hash_from_hex("zzzz").has_value());
 }

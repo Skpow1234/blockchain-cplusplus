@@ -27,6 +27,16 @@ struct NodeConfig {
   std::uint64_t genesis_timestamp = 0;
   std::uint32_t max_block_size_bytes = 0;  // 0 => use protocol default
 
+  // Mine this many blocks after genesis (empty blocks if the mempool is empty).
+  // Timestamps are deterministic: genesis_timestamp + block height.
+  std::uint32_t mine_blocks = 0;
+
+  // Consensus economics. Zero means "use the documented protocol default".
+  std::uint64_t block_subsidy = 0;
+  std::uint32_t coinbase_maturity = 0;
+  // 64-character hex Hash256 for coinbase payouts; empty => all-zero recipient.
+  std::string coinbase_recipient_hex;
+
   // Validates the configuration, returning a descriptive error on failure.
   [[nodiscard]] Result<void> validate() const;
 };

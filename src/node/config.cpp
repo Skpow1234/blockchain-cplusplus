@@ -5,6 +5,8 @@
 #include <string_view>
 #include <vector>
 
+#include "blockchain/crypto/hash.hpp"
+
 namespace blockchain::node {
 namespace {
 
@@ -19,6 +21,18 @@ namespace {
                                                      "'");
   }
   return value;
+}
+
+[[nodiscard]] Result<std::uint32_t> parse_u32(std::string_view text, std::string_view flag) {
+  auto parsed = parse_u64(text, flag);
+  if (!parsed) {
+    return std::unexpected(parsed.error());
+  }
+  if (*parsed > UINT32_MAX) {
+    return make_error(ErrorCode::kInvalidConfig,
+                      std::string("value out of range for ") + std::string(flag));
+  }
+  return static_cast<std::uint32_t>(*parsed);
 }
 
 }  // namespace
@@ -65,6 +79,10 @@ Result<void> NodeConfig::validate() const {
   }
   if (data_dir.empty()) {
     return make_error(ErrorCode::kInvalidConfig, "data_dir must not be empty");
+  }
+  if (!coinbase_recipient_hex.empty() && !crypto::hash_from_hex(coinbase_recipient_hex)) {
+    return make_error(ErrorCode::kInvalidConfig,
+                      "coinbase_recipient_hex must be a 64-character hex hash");
   }
   return {};
 }
@@ -129,6 +147,42 @@ Result<NodeConfig> parse_args(const std::vector<std::string>& args) {
         return std::unexpected(parsed.error());
       }
       config.max_block_size_bytes = static_cast<std::uint32_t>(*parsed);
+    } else if (arg == "--mine-blocks") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u32(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.mine_blocks = *parsed;
+    } else if (arg == "--block-subsidy") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u64(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.block_subsidy = *parsed;
+    } else if (arg == "--coinbase-maturity") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      auto parsed = parse_u32(*value, arg);
+      if (!parsed) {
+        return std::unexpected(parsed.error());
+      }
+      config.coinbase_maturity = *parsed;
+    } else if (arg == "--coinbase-recipient") {
+      auto value = require_value(arg);
+      if (!value) {
+        return std::unexpected(value.error());
+      }
+      config.coinbase_recipient_hex = *value;
     } else {
       return make_error(ErrorCode::kInvalidConfig, std::string("unknown argument: '") + arg + "'");
     }
@@ -151,6 +205,10 @@ std::string usage(std::string_view program) {
   out += "  --log-level <level>        error|warn|info|debug|trace (default: info)\n";
   out += "  --genesis-timestamp <n>    Deterministic genesis timestamp (default: 0)\n";
   out += "  --max-block-size <bytes>   Override max block size (default: protocol limit)\n";
+  out += "  --mine-blocks <n>          Mine n blocks after genesis (default: 0)\n";
+  out += "  --block-subsidy <amount>   Coinbase subsidy per block (default: protocol)\n";
+  out += "  --coinbase-maturity <n>    Blocks before a coinbase may be spent (default: protocol)\n";
+  out += "  --coinbase-recipient <hex> 64-char hex payout address (default: zero)\n";
   out += "  -h, --help                 Show this help and exit\n";
   return out;
 }

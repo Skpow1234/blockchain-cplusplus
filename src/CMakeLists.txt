@@ -11,7 +11,8 @@ add_library(blockchain_core
   production/block_builder.cpp
   consensus/chain.cpp
   node/config.cpp
-  node/genesis.cpp)
+  node/genesis.cpp
+  node/simulator.cpp)
 
 target_include_directories(blockchain_core
   PUBLIC ${CMAKE_SOURCE_DIR}/include)

@@ -4,5 +4,9 @@
   "data_dir": "./data/node-0",
   "log_level": "info",
   "genesis_timestamp": 0,
-  "max_block_size_bytes": 0
+  "max_block_size_bytes": 0,
+  "mine_blocks": 0,
+  "block_subsidy": 0,
+  "coinbase_maturity": 0,
+  "coinbase_recipient_hex": ""
 }

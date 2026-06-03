@@ -50,3 +50,19 @@ TEST_CASE("non-numeric integer is rejected") {
   CHECK(!config.has_value());
   CHECK(config.error().code == ErrorCode::kInvalidConfig);
 }
+
+TEST_CASE("simulator flags are parsed") {
+  auto config = parse_args({"--mine-blocks", "3", "--block-subsidy", "5000",
+                            "--coinbase-maturity", "1", "--coinbase-recipient",
+                            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"});
+  CHECK(config.has_value());
+  CHECK_EQ(config->mine_blocks, static_cast<std::uint32_t>(3));
+  CHECK_EQ(config->block_subsidy, static_cast<std::uint64_t>(5000));
+  CHECK_EQ(config->coinbase_maturity, static_cast<std::uint32_t>(1));
+}
+
+TEST_CASE("invalid coinbase recipient hex is rejected") {
+  auto config = parse_args({"--coinbase-recipient", "not-valid"});
+  CHECK(!config.has_value());
+  CHECK(config.error().code == ErrorCode::kInvalidConfig);
+}

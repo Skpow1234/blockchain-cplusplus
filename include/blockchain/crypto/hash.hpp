@@ -6,6 +6,9 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
+
+#include "blockchain/error.hpp"
 
 namespace blockchain::crypto {
 
@@ -23,6 +26,9 @@ using Hash256 = std::array<std::byte, 32>;
 
 // Lowercase hex encoding of a digest.
 [[nodiscard]] std::string to_hex(const Hash256& hash);
+
+// Parses a 64-character hexadecimal string into a digest (case-insensitive).
+[[nodiscard]] Result<Hash256> hash_from_hex(std::string_view hex);
 
 // All-zero digest constant (e.g. the genesis block's "previous" reference).
 [[nodiscard]] constexpr Hash256 zero_hash() noexcept {
