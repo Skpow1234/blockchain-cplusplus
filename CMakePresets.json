@@ -57,6 +57,8 @@
       "description": "Requires a Clang toolchain; set CC/CXX to clang/clang++ (libFuzzer).",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "BLOCKCHAIN_BUILD_TESTS": "OFF",
+        "BLOCKCHAIN_BUILD_BENCHMARKS": "OFF",
         "BLOCKCHAIN_BUILD_FUZZERS": "ON",
         "BLOCKCHAIN_ENABLE_ASAN": "ON",
         "BLOCKCHAIN_ENABLE_UBSAN": "ON"

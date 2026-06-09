@@ -68,10 +68,16 @@ function(blockchain_enable_sanitizers target)
   endif()
 
   if(_sanitizers AND NOT MSVC)
-    list(JOIN _sanitizers "," _flags)
+    list(JOIN _sanitizers "," _link_flags)
+  # libFuzzer needs coverage instrumentation in every translation unit that ends up
+  # in a fuzz binary, but only fuzz executables may link the fuzzer runtime (main).
+    set(_compile_flags ${_link_flags})
+    if(BLOCKCHAIN_BUILD_FUZZERS)
+      set(_compile_flags "${_link_flags},fuzzer-no-link")
+    endif()
     target_compile_options(${target} PRIVATE
-      -fsanitize=${_flags} -fno-omit-frame-pointer -g)
-    target_link_options(${target} PRIVATE -fsanitize=${_flags})
+      -fsanitize=${_compile_flags} -fno-omit-frame-pointer -g)
+    target_link_options(${target} PRIVATE -fsanitize=${_link_flags})
   endif()
 endfunction()
 
